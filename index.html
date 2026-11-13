@@ -74,11 +74,11 @@ button{cursor:pointer}
 </style>
 </head>
 <body>
-<button id="stage" aria-label="مساعد: المس للبدء أو للمقاطعة"><canvas id="hud" aria-hidden="true"></canvas></button>
-<div class="readout" aria-live="polite"><div id="state">المس الشاشة للبدء</div><div id="caption"></div></div>
+<button id="stage" aria-label="مساعد: اضغط للبدء أو للمقاطعة"><canvas id="hud" aria-hidden="true"></canvas></button>
+<div class="readout" aria-live="polite"><div id="state">اضغط للبدء</div><div id="caption"></div></div>
 
 <section id="card" aria-label="المحادثة والإعدادات">
-  <button id="grip" aria-label="افتح أو أغلق البطاقة"><i></i><span id="gripText">اسحب للأعلى</span></button>
+  <button id="grip" aria-label="فتح البطاقة أو إغلاقها"><i></i><span id="gripText">اسحب للأعلى</span></button>
   <div class="cardbody">
     <div class="head"><h1>مساعد</h1><small id="conn">غير متصل</small></div>
     <div class="seg" role="tablist">
@@ -89,26 +89,26 @@ button{cursor:pointer}
       <div class="msgs" id="msgs"></div>
       <form class="bar" id="form">
         <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">اكتب رسالتك</label>
-        <input id="q" type="text" autocomplete="off" enterkeyhint="send" placeholder="اكتب بدل الكلام">
+        <input id="q" type="text" autocomplete="off" enterkeyhint="send" placeholder="اكتب رسالتك">
         <button class="round send" aria-label="إرسال"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></button>
         <button type="button" class="round endbtn" id="endBtn" aria-label="إنهاء المحادثة" hidden><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
       </form>
     </div>
     <div class="pane settings" id="paneSet">
       <ol>
-        <li>افتح <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> وسجّل دخول بحساب قوقل.</li>
-        <li>اضغط Create API key وانسخ المفتاح.</li>
-        <li>الصقه هنا واضغط حفظ.</li>
+        <li>افتح <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> وسجّل الدخول بحساب Google.</li>
+        <li>اضغط Create API key ثم انسخ المفتاح.</li>
+        <li>الصق المفتاح هنا ثم اضغط «حفظ وبدء».</li>
       </ol>
-      <div class="field"><label for="keyIn">مفتاح Gemini</label><input id="keyIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza..."></div>
-      <div class="field"><label for="nameIn">اسمك</label><input id="nameIn" type="text" autocomplete="off" placeholder="مثلاً: عمر"></div>
-      <div class="field"><label for="voiceIn">الصوت (كلها أصوات نسائية)</label>
+      <div class="field"><label for="keyIn">مفتاح التفعيل</label><input id="keyIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza..."></div>
+      <div class="field"><label for="nameIn">الاسم</label><input id="nameIn" type="text" autocomplete="off" placeholder="مثال: عمر"></div>
+      <div class="field"><label for="voiceIn">الصوت</label>
         <select id="voiceIn">
-          <option value="Kore">Kore · واثق</option><option value="Aoede">Aoede · خفيف</option><option value="Leda">Leda · شبابي</option>
-          <option value="Zephyr">Zephyr · مشرق</option><option value="Sulafat">Sulafat · دافي</option><option value="Achernar">Achernar · ناعم</option>
+          <option value="Kore">Kore · واثق</option><option value="Aoede">Aoede · هادئ</option><option value="Leda">Leda · شبابي</option>
+          <option value="Zephyr">Zephyr · مشرق</option><option value="Sulafat">Sulafat · دافئ</option><option value="Achernar">Achernar · ناعم</option>
         </select></div>
-      <p class="tiny">المفتاح ينحفظ في هذا الجوال فقط.</p>
-      <button class="primary" id="saveBtn">حفظ وابدأ</button>
+      <p class="tiny">يُحفظ المفتاح على هذا الجهاز فقط.</p>
+      <button class="primary" id="saveBtn">حفظ وبدء</button>
       <button class="ghost" id="clearBtn">مسح سجل المحادثة</button>
     </div>
   </div>
@@ -146,7 +146,7 @@ function frame(now){
   else{for(i=0;i<64;i++)freq[i]=0;target=mode==="connect"?.25+.2*Math.sin(t*6):.06+.04*Math.sin(t*1.4)}
   amp+=(target-amp)*.22;
   if(live&&ready){var sp=speaking();if(sp&&mode!=="speak")setMode("speak");else if(!sp&&mode==="speak")setMode("listen")}
-  if(live&&ctx&&ctx.state!=="running")$("#state").textContent="المس الشاشة عشان يشتغل الصوت";
+  if(live&&ctx&&ctx.state!=="running")$("#state").textContent="اضغط على الشاشة لتشغيل الصوت";
 
   g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,W,H);
   var m=Math.min(W,H),R=m*.15,cx=W/2,cy=H*.42;
@@ -203,14 +203,14 @@ function frame(now){
 requestAnimationFrame(frame);
 if(still)setInterval(function(){frame(performance.now())},400);
 
-var LABEL={idle:"المس الشاشة للبدء",connect:"لحظة، أجهّز",listen:"أسمعك",speak:"أتكلم · المس للمقاطعة"};
-function setMode(m){mode=m;$("#state").textContent=LABEL[m];$("#conn").textContent=m==="idle"?"غير متصل":m==="connect"?"يتصل":"متصل";$("#endBtn").hidden=m==="idle"}
+var LABEL={idle:"اضغط للبدء",connect:"جارٍ الاتصال…",listen:"أستمع إليك",speak:"اضغط للمقاطعة"};
+function setMode(m){mode=m;$("#state").textContent=LABEL[m];$("#conn").textContent=m==="idle"?"غير متصل":m==="connect"?"جارٍ الاتصال":"متصل";$("#endBtn").hidden=m==="idle"}
 
 /* ================= transcript ================= */
 function bubble(cls,text){var e=$("#msgs .empty");if(e)e.remove();var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#msgs").appendChild(d);$("#msgs").scrollTop=1e7;return d}
 function note(t){bubble("note",t);$("#caption").textContent=t}
 function renderLog(){$("#msgs").textContent="";
-  if(!log.length){var p=document.createElement("p");p.className="empty";p.textContent="كلامكم يطلع هنا مكتوب.";$("#msgs").appendChild(p);return}
+  if(!log.length){var p=document.createElement("p");p.className="empty";p.textContent="سيظهر نص المحادثة هنا.";$("#msgs").appendChild(p);return}
   log.slice(-14).forEach(function(l){bubble(l.r==="u"?"me":"ai",l.t)})}
 function pushLog(r,t){t=(t||"").trim();if(!t)return;log.push({r:r,t:t.slice(0,600)});log=log.slice(-40);set(K.log,JSON.stringify(log))}
 function endTurn(){if(curMe){pushLog("u",curMe.textContent);curMe=null}if(curAi){pushLog("a",curAi.textContent);curAi=null}}
@@ -275,11 +275,11 @@ function connect(){
     if(!ready&&attempt===0&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt=1;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
     stop();
-    if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صحيح. افتح البطاقة والصق مفتاح جديد.");openCard("set")}
-    else if(/quota|exhaust|rate/i.test(why))note("خلص الحد المجاني حالياً. جرّب بعد شوي.");
+    if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صالح. أدخل مفتاحًا جديدًا من الإعدادات.");openCard("set")}
+    else if(/quota|exhaust|rate/i.test(why))note("تم بلوغ الحد المجاني. حاول لاحقًا.");
     else if(wasReady&&lasted>20000&&!document.hidden){start()}
-    else if(wasReady)note("انتهت الجلسة. المس الشاشة وكمّل.");
-    else note("ما قدرت أتصل. "+(why?"السبب: "+why:"تأكد من الإنترنت والمفتاح."))}}
+    else if(wasReady)note("انتهت الجلسة. اضغط للمتابعة.");
+    else note("تعذّر الاتصال. "+(why?"السبب: "+why:"تحقق من الإنترنت ومن المفتاح."))}}
 function handle(m){
   if(m.setupComplete){ready=true;startedAt=Date.now();startMic();setMode("listen");
     var first=pendingText||(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج.");
@@ -295,16 +295,16 @@ function handle(m){
 function start(){
   if(live)return;
   if(!get(K.key)){openCard("set");return}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح ما يدعم المايكروفون. افتح الصفحة في Safari.");return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}
   live=true;userEnded=false;attempt=0;setMode("connect");$("#caption").textContent="";
-  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("الصوت ما اشتغل في هذا المتصفح.");return}
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("تعذّر تشغيل الصوت في هذا المتصفح.");return}
   buildGraph();ctx.resume().catch(function(){});
   try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
   navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}}).then(function(s){
     if(!live){s.getTracks().forEach(function(t){t.stop()});return}
     mic=s;connect();
     try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(function(w){wake=w},function(){})}catch(e){}
-  },function(){live=false;setMode("idle");note("اسمح بالمايكروفون عشان أسمعك، وبعدها المس الشاشة.")})}
+  },function(){live=false;setMode("idle");note("اسمح باستخدام الميكروفون ثم اضغط على الشاشة.")})}
 function stop(){
   live=false;ready=false;endTurn();flush();dropTurn=false;
   try{if(ws){ws.onclose=null;ws.close()}}catch(e){}ws=null;
@@ -343,7 +343,7 @@ document.addEventListener("visibilitychange",function(){
   else if(get(K.key)&&!live&&!userEnded&&!$("#card").classList.contains("open"))start()});
 
 renderLog();setMode("idle");
-if(!get(K.key)){$("#state").textContent="أول مرة: الصق المفتاح من البطاقة";openCard("set")}
+if(!get(K.key)){$("#state").textContent="أدخل مفتاح التفعيل للبدء";openCard("set")}
 else start();
 })();
 </script>
