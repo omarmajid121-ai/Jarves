@@ -51,7 +51,7 @@ body.muted .live{display:none}
 .live i{display:block;width:3px;height:100%;border-radius:2px;background:currentColor;animation:bar 1.1s ease-in-out infinite}
 .live i:nth-child(1){height:50%}.live i:nth-child(2){animation-delay:.15s}.live i:nth-child(3){height:70%;animation-delay:.3s}.live i:nth-child(4){height:90%;animation-delay:.45s}.live i:nth-child(5){height:45%;animation-delay:.6s}
 @keyframes bar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
-#caption{position:fixed;z-index:3;left:24px;right:24px;top:var(--capTop,62%);margin:0 auto;max-width:520px;pointer-events:none;text-align:center;font-size:28px;line-height:37px;font-weight:600;text-wrap:balance;
+#caption{position:fixed;z-index:3;left:24px;right:24px;top:var(--capTop,62%);margin:0 auto;max-width:520px;pointer-events:none;text-align:center;font-size:17px;line-height:26px;font-weight:500;color:var(--t2);text-wrap:balance;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;transition:opacity .25s ease}
 #chips{position:fixed;z-index:4;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 118px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;transition:opacity .25s ease}
 .chip{height:40px;padding:0 16px;border-radius:20px;color:#fff;font-size:15px;transition:transform .32s var(--spring)}
@@ -68,7 +68,7 @@ body.acting #caption,body.acting #chips,body.acting .tool{opacity:0;pointer-even
 #toast .ok{color:#30D158;display:flex;flex:none}
 #toastT{flex:1;min-width:0;overflow-wrap:anywhere}
 #toastU{height:32px;padding:0 12px;border-radius:16px;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:14px;flex:none}
-@media (max-height:700px){#caption{font-size:24px;line-height:32px;-webkit-line-clamp:2}}
+
 /* iOS sheet */
 :root{--blue:#0A84FF;--red:#FF453A;--label:#FFFFFF;--label2:rgba(235,235,245,.62);--label3:rgba(235,235,245,.32);--sep:rgba(84,84,88,.65);--fill:rgba(118,118,128,.24);--cell:rgba(118,118,128,.18)}
 #card{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:540px;height:86%;z-index:10;display:flex;flex-direction:column;
@@ -551,8 +551,8 @@ function handle(m){
       else{var r;try{r=fc.name==="portfolio_update"?pfUpdate(fc.args||{}):fc.name==="show_portfolio"?showPortfolio(fc.args||{}):showAction(fc.args||{})}catch(e){r={ok:false,shown:false}}out[ix]={id:fc.id,name:fc.name,response:r};done()}});return}
   var sc=m.serverContent;if(!sc)return;
   if(sc.interrupted){flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
-  if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#caption").textContent=curMe.textContent;$("#msgs").scrollTop=1e7}
-  if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#caption").textContent=curAi.textContent.slice(-140);$("#msgs").scrollTop=1e7}
+  if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7}
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn){sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
   if(sc.turnComplete){dropTurn=false;endTurn()}}
@@ -630,7 +630,7 @@ function renderPf(){var a=pfGet(),ul=$("#pfList"),tc=0;ul.textContent="";ul.hidd
 var pfArm=0;
 $("#pfClear").onclick=function(){var b=this;if(Date.now()-pfArm<4000){var prev=pfGet();pfSet([]);renderPf();b.textContent="مسح المحفظة";pfArm=0;toast("مُسحت المحفظة",function(){pfSet(prev);renderPf()})}
   else{pfArm=Date.now();b.textContent="اضغط مرة أخرى للتأكيد";setTimeout(function(){b.textContent="مسح المحفظة"},4000)}};
-function sendText(v){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);$("#caption").textContent=v;ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;$("#caption").textContent=v;start()}}
+function sendText(v){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;start()}}
 
 /* ================= controls ================= */
 ["pointerdown","touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){if(ctx&&ctx.state!=="running")ctx.resume().catch(function(){})},true)});
