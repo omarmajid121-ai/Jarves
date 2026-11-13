@@ -81,12 +81,40 @@ button{cursor:pointer}
 .cell.link{color:var(--blue)}
 .cell.danger{color:var(--red);justify-content:center}
 .primary{min-height:50px;border-radius:25px;border:0;background:var(--blue);color:#fff;font-weight:600;font-size:17px;flex:none;margin:22px 0 14px}
-@media (prefers-reduced-motion:reduce){#card{transition:none}}
+/* action panel */
+#act{position:fixed;left:16px;right:16px;margin:0 auto;max-width:380px;bottom:calc(env(safe-area-inset-bottom) + 60px);z-index:5;border-radius:28px;padding:16px;display:flex;flex-direction:column;gap:12px;
+  background:rgba(28,28,30,.6);border:.5px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(36px) saturate(180%);backdrop-filter:blur(36px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(26px) scale(.94);pointer-events:none;transition:opacity .35s ease,transform .5s cubic-bezier(.32,.72,0,1)}
+#act.on{opacity:1;transform:none;pointer-events:auto}
+body.acting .readout{opacity:0}
+.readout{transition:opacity .25s ease}
+.arow{display:flex;align-items:center;gap:12px}
+.arow .tt{flex:1;min-width:0;display:flex;flex-direction:column}
+#actTitle{font-size:17px;line-height:22px;font-weight:600;overflow-wrap:anywhere}
+#actTag{font-size:13px;line-height:18px;color:var(--label2)}
+#actBody{font-size:15px;line-height:21px;color:var(--label2);white-space:pre-wrap;overflow-wrap:anywhere;min-height:21px;margin:0}
+.skel{display:flex;flex-direction:column;gap:8px}
+.skel i{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.26),rgba(255,255,255,.08));background-size:200% 100%;animation:shim 1.4s linear infinite}
+.skel i:nth-child(2){width:78%}.skel i:nth-child(3){width:56%}
+@keyframes shim{from{background-position:200% 0}to{background-position:-200% 0}}
+.abtns{display:flex;gap:10px}
+.abtns a,.abtns button{flex:1;min-height:44px;border-radius:22px;border:0;display:grid;place-items:center;font-size:17px;font-weight:600;text-decoration:none}
+#actGo{background:var(--blue);color:#fff}
+#actClose{background:var(--fill);color:var(--label)}
+.ic.violet{background:#BF5AF2}.ic.teal{background:#40C8E0}
+@media (prefers-reduced-motion:reduce){#card,#act{transition:none}.skel i{animation:none}}
 </style>
 </head>
 <body>
 <button id="stage" aria-label="مساعد: اضغط للبدء أو للمقاطعة"><canvas id="hud" aria-hidden="true"></canvas></button>
 <div class="readout" aria-live="polite"><div id="state">اضغط للبدء</div><div id="caption"></div></div>
+
+<div id="act" role="status" aria-live="polite">
+  <div class="arow"><span class="ic" id="actIc"></span><div class="tt"><div id="actTitle"></div><div id="actTag"></div></div></div>
+  <p id="actBody"></p>
+  <div class="skel" id="actSkel" hidden><i></i><i></i><i></i></div>
+  <div class="abtns"><a id="actGo" href="#" hidden></a><button id="actClose">إغلاق</button></div>
+</div>
 
 <section id="card" aria-label="المحادثة والإعدادات">
   <button id="grip" aria-label="فتح البطاقة أو إغلاقها"><i></i><span id="gripText" hidden></span></button>
@@ -136,6 +164,14 @@ button{cursor:pointer}
           <svg class="chev" aria-hidden="true" width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6L5 2.5 8.5 6M1.5 10L5 13.5 8.5 10"></path></svg></div>
       </div>
       <button class="primary" id="saveBtn">حفظ وبدء</button>
+      <p class="ghdr">معاينة الحركات</p>
+      <div class="group">
+        <button class="cell plain" data-demo="call">اتصال</button>
+        <button class="cell plain" data-demo="sms">رسالة نصية</button>
+        <button class="cell plain" data-demo="email">البريد</button>
+        <button class="cell plain" data-demo="meeting">اجتماع</button>
+      </div>
+      <p class="gftr">عرض تجريبي لما يظهر عند طلب اتصال أو رسالة أو بريد أو اجتماع.</p>
       <div class="group"><button class="cell plain danger" id="clearBtn">مسح سجل المحادثة</button></div>
     </div>
   </div>
@@ -158,14 +194,16 @@ try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
 
 /* ================= HUD ================= */
 var cv=$("#hud"),g=cv.getContext("2d"),W=0,H=0,DPR=1,still=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-var PAL={idle:[[70,150,215],[36,84,150]],connect:[[196,188,255],[118,108,226]],listen:[[96,224,255],[44,150,255]],speak:[[255,196,96],[255,122,62]]};
+var PAL={idle:[[70,150,215],[36,84,150]],connect:[[196,188,255],[118,108,226]],listen:[[96,224,255],[44,150,255]],speak:[[255,196,96],[255,122,62]],
+  call:[[112,240,164],[26,150,104]],sms:[[104,236,226],[24,140,170]],email:[[140,196,255],[58,104,232]],meeting:[[206,166,255],[118,84,232]]};
+var act=null;
 var c1=PAL.idle[0].slice(),c2=PAL.idle[1].slice(),amp=0,freq=new Uint8Array(64),bars=new Float32Array(72);
 function fit(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR)}
 window.addEventListener("resize",fit);fit();
 function rgba(c,a){return "rgba("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+","+a+")"}
 function arc(r,a0,a1,w,col){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(0,0,r,a0,a1);g.stroke()}
 function frame(now){
-  var t=now/1000,P=PAL[mode]||PAL.idle,i;
+  var t=now/1000,P=act?PAL[act.type]:(PAL[mode]||PAL.idle),i;
   for(i=0;i<3;i++){c1[i]+=(P[0][i]-c1[i])*.07;c2[i]+=(P[1][i]-c2[i])*.07}
   /* audio level */
   var an=mode==="speak"?anOut:mode==="listen"?anIn:null,target=0;
@@ -212,24 +250,69 @@ function frame(now){
     g.strokeStyle=rgba(b>.55?c1:c2,.35+b*.65);g.lineWidth=Math.max(2,R*.035);
     g.beginPath();g.moveTo(Math.cos(ba)*q0,Math.sin(ba)*q0);g.lineTo(Math.cos(ba)*q1,Math.sin(ba)*q1);g.stroke()}
 
+  if(act)drawAct(t,R);
   /* core */
   var cr=R*(1+amp*.16);
   var halo=g.createRadialGradient(0,0,cr*.2,0,0,cr*1.5);halo.addColorStop(0,rgba(c1,.55));halo.addColorStop(1,rgba(c1,0));
   g.fillStyle=halo;g.beginPath();g.arc(0,0,cr*1.5,0,7);g.fill();
   var core=g.createRadialGradient(0,0,0,0,0,cr);
-  core.addColorStop(0,"rgba(255,255,255,"+(.85+amp*.15)+")");core.addColorStop(.22,rgba(c1,.95));core.addColorStop(.7,rgba(c2,.55));core.addColorStop(1,rgba(c2,.05));
+  core.addColorStop(0,act?rgba(c2,.95):"rgba(255,255,255,"+(.85+amp*.15)+")");core.addColorStop(.22,rgba(c1,.95));core.addColorStop(.7,rgba(c2,.55));core.addColorStop(1,rgba(c2,.05));
   g.fillStyle=core;g.beginPath();g.arc(0,0,cr,0,7);g.fill();
   arc(cr,0,6.2832,2,rgba(c1,.9));
   /* iris: twelve blades breathing with the voice */
+  if(act){glyph(act.type,cr)}else{
   g.save();g.rotate(-t*.4);g.lineCap="butt";
   for(i=0;i<12;i++){var ia=i/12*6.2832;arc(cr*.66,ia,ia+.2+amp*.22,cr*.1,"rgba(255,255,255,"+(.28+amp*.5)+")")}
   g.restore();
-  g.save();g.rotate(t*.9);arc(cr*.42,0,2.2,2,"rgba(255,255,255,.7)");arc(cr*.42,3.3,4.6,2,"rgba(255,255,255,.45)");g.restore();
+  g.save();g.rotate(t*.9);arc(cr*.42,0,2.2,2,"rgba(255,255,255,.7)");arc(cr*.42,3.3,4.6,2,"rgba(255,255,255,.45)");g.restore();}
   g.restore();
   if(!still)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 if(still)setInterval(function(){frame(performance.now())},400);
 
+function drawAct(t,R){
+  var e=t-act.t0,k,pz;g.lineCap="round";
+  if(e<1.4){var a=e*9;arc(R*2.86,a,a+1.3,4,rgba(c1,1-e/1.4));arc(R*2.34,-a,-a+1,3,rgba(c1,1-e/1.4))}
+  if(act.type==="call"){for(k=0;k<4;k++){pz=(e*.55+k*.25)%1;arc(R*(1.25+pz*2.3),0,6.2832,2.5,rgba(c1,(1-pz)*.75))}}
+  else if(act.type==="sms"){for(k=0;k<5;k++){pz=(e*.8+k*.2)%1;var w=.34*(1-pz)+.05;arc(R*(1.3+pz*2),-1.5708-w,-1.5708+w,3,rgba(c1,1-pz))}}
+  else if(act.type==="email"){for(k=0;k<20;k++){pz=(e*.3+k/20)%1;var an=k*1.37+pz*3.6,rd=R*(3.1-pz*1.95);
+      g.save();g.translate(Math.cos(an)*rd,Math.sin(an)*rd);g.rotate(an);g.fillStyle=rgba(c1,Math.min(1,pz*2.2)*(1-pz*pz));g.fillRect(-7,-4.5,14,9);g.restore()}}
+  else{for(k=0;k<12;k++){var ha=k/12*6.2832-1.5708,lit=((e*4)|0)%12>=k||e>3;g.strokeStyle=rgba(c1,lit?.95:.25);g.lineWidth=3;
+      g.beginPath();g.moveTo(Math.cos(ha)*R*1.52,Math.sin(ha)*R*1.52);g.lineTo(Math.cos(ha)*R*1.72,Math.sin(ha)*R*1.72);g.stroke()}
+    var hd=e*1.3-1.5708;g.strokeStyle=rgba(c1,.9);g.lineWidth=3;g.beginPath();g.moveTo(Math.cos(hd)*R*1.24,Math.sin(hd)*R*1.24);g.lineTo(Math.cos(hd)*R*1.9,Math.sin(hd)*R*1.9);g.stroke()}}
+function glyph(type,s){
+  var pop=Math.min(1,(performance.now()/1000-act.t0)*3);g.save();g.scale(pop,pop);
+  g.strokeStyle="#fff";g.fillStyle="#fff";g.lineJoin="round";g.lineCap="round";g.lineWidth=s*.075;
+  if(type==="call"){g.lineWidth=s*.17;g.beginPath();g.arc(0,s*.34,s*.5,3.62,5.8);g.stroke();
+    g.beginPath();g.moveTo(-s*.44,s*.10);g.lineTo(-s*.40,s*.24);g.moveTo(s*.44,s*.10);g.lineTo(s*.40,s*.24);g.stroke()}
+  else if(type==="email"){g.beginPath();g.rect(-s*.48,-s*.32,s*.96,s*.64);g.stroke();g.beginPath();g.moveTo(-s*.48,-s*.3);g.lineTo(0,s*.08);g.lineTo(s*.48,-s*.3);g.stroke()}
+  else if(type==="sms"){g.beginPath();g.moveTo(-s*.46,-s*.34);g.lineTo(s*.46,-s*.34);g.lineTo(s*.46,s*.2);g.lineTo(-s*.12,s*.2);g.lineTo(-s*.34,s*.42);g.lineTo(-s*.3,s*.2);g.lineTo(-s*.46,s*.2);g.closePath();g.stroke();
+    var tt=performance.now()/260;for(var d=0;d<3;d++){g.globalAlpha=.35+.65*Math.max(0,Math.sin(tt-d*.9));g.beginPath();g.arc((d-1)*s*.22,-s*.07,s*.055,0,7);g.fill()}g.globalAlpha=1}
+  else{g.beginPath();g.rect(-s*.42,-s*.34,s*.84,s*.74);g.stroke();g.beginPath();g.moveTo(-s*.42,-s*.12);g.lineTo(s*.42,-s*.12);g.moveTo(-s*.2,-s*.46);g.lineTo(-s*.2,-s*.26);g.moveTo(s*.2,-s*.46);g.lineTo(s*.2,-s*.26);g.stroke();
+    g.beginPath();g.arc(s*.14,s*.16,s*.08,0,7);g.fill()}
+  g.restore()}
+var ICON={call:['green','<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"></path>'],
+  sms:['teal','<path d="M4 5h16v11H10l-5 4v-4H4z"></path>'],email:['blue','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path>'],
+  meeting:['violet','<rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path>']};
+var typeT=null,actT=null;
+function typeInto(el,text){clearInterval(typeT);el.textContent="";var i=0;if(!text)return;typeT=setInterval(function(){i+=2;el.textContent=text.slice(0,i);if(i>=text.length)clearInterval(typeT)},22)}
+function showAction(a){
+  a=a||{};var type={call:1,sms:1,email:1,meeting:1}[a.type]?a.type:"call";
+  var name=String(a.name||"").slice(0,60),num=String(a.number||"").replace(/[^\d+]/g,"").slice(0,20),text=String(a.text||"").slice(0,400);
+  var title="",tag="",body="",go="",goText="",real=false;
+  if(type==="call"){title=name?"اتصال بـ "+name:"اتصال";if(num){body=num;go="tel:"+num;goText="اتصال";tag="جاهز للاتصال";real=true}else{body="لم يُحدَّد رقم الهاتف.";tag="يتطلب رقمًا"}}
+  else if(type==="sms"){title=name?"رسالة إلى "+name:"رسالة نصية";body=text||"لم يُحدَّد نص الرسالة.";if(num){go="sms:"+num+"&body="+encodeURIComponent(text);goText="فتح الرسائل";tag="جاهزة للإرسال";real=true}else{tag="يتطلب رقمًا"}}
+  else if(type==="email"){title="البريد الوارد";tag="عرض تجريبي";body="البريد غير مرتبط بعد. سيظهر هنا ملخص رسائلك عند الربط."}
+  else{title=String(a.title||"اجتماع").slice(0,80);tag="عرض تجريبي";body=[a.when?"الموعد: "+String(a.when).slice(0,80):"",name?"مع: "+name:"","التقويم غير مرتبط بعد."].filter(Boolean).join("\n")}
+  var ic=ICON[type];$("#actIc").className="ic "+ic[0];
+  $("#actIc").innerHTML='<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+ic[1]+'</svg>';
+  $("#actTitle").textContent=title;$("#actTag").textContent=tag;typeInto($("#actBody"),body);
+  $("#actSkel").hidden=type!=="email";
+  var goEl=$("#actGo");if(go){goEl.href=go;goEl.textContent=goText;goEl.hidden=false}else{goEl.hidden=true;goEl.removeAttribute("href")}
+  act={type:type,t0:performance.now()/1000};$("#act").classList.add("on");document.body.classList.add("acting");
+  clearTimeout(actT);actT=setTimeout(closeAction,30000);
+  return {shown:true,ready_for_user_tap:real,note:real?"A card is on screen; the user taps it to confirm.":(type==="call"||type==="sms")?"Shown without a phone number; ask for the number.":"Preview only; this service is not connected yet."}}
+function closeAction(){clearTimeout(actT);clearInterval(typeT);act=null;$("#act").classList.remove("on");document.body.classList.remove("acting")}
 var LABEL={idle:"اضغط للبدء",connect:"جارٍ الاتصال…",listen:"أستمع إليك",speak:"اضغط للمقاطعة"};
 function setMode(m){mode=m;$("#state").textContent=LABEL[m];$("#conn").textContent=m==="idle"?"غير متصل":m==="connect"?"جارٍ الاتصال":"متصل";$("#endBtn").hidden=m==="idle"}
 
@@ -251,7 +334,7 @@ function promptEn(){
   var past=log.slice(-14).map(function(l){return (l.r==="u"?"User: ":"You: ")+l.t}).join("\n");
   return "You are Musaed, a personal assistant. Speak British English with a Received Pronunciation accent. Your manner is calm, composed, formal and courteous, with precise wording and the occasional touch of dry wit. Address the user as 'sir' unless told otherwise.\n"+
   "Keep replies short and clear, one to three sentences, unless asked for detail. Answer any question, discuss, give a view, and carry long conversations smoothly, remembering what was said.\n"+
-  "This version is conversation only: you cannot place calls, send messages, or read email or calendars. If asked, say plainly that it is not available yet. If you do not know something, say so.\n"+
+  "When asked to call someone, write a text message, show email, or book a meeting, use the show_action tool to put it on screen, then comment in one short sentence. Calls and texts show a card the user taps to confirm and need a phone number; ask for it if missing. Email and meetings are previews only and not connected yet; say so plainly. Never claim you placed a call or sent anything yourself. If you do not know something, say so.\n"+
   "Always reply in English, even if the user speaks Arabic, unless he asks you to switch.\n"+
   (name?"The user's name is "+name+".\n":"")+
   "Current time in Riyadh: "+nowText()+".\n"+
@@ -262,7 +345,7 @@ function prompt(){
   var past=log.slice(-14).map(function(l){return (l.r==="u"?"هو: ":"أنتِ: ")+l.t}).join("\n");
   return "أنتِ «مساعد»، مساعدة شخصية سعودية بصوت نسائي. تتكلمين دائماً باللهجة السعودية الدارجة (نجدية بيضاء) بشكل طبيعي ودافي، مثل صديقة ذكية يُعتمد عليها، وبصيغة المؤنث عن نفسك.\n"+
   "ردودك قصيرة وواضحة، من جملة إلى ثلاث، إلا إذا طلب تفصيل. تجاوبين على أي سؤال، تناقشين وتعطين رأيك، وتكملين المحادثات الطويلة بسلاسة وتتذكرين اللي انقال فيها.\n"+
-  "هذي النسخة محادثة فقط: ما تقدرين تتصلين ولا ترسلين رسائل ولا تدخلين على الإيميل أو التقويم. إذا طلب شي من هذا قولي له بصراحة إنه ما اشتغل للحين. وإذا ما تعرفين معلومة قوليها بدون اختراع.\n"+
+  "إذا طلب اتصال أو رسالة نصية أو عرض البريد أو حجز اجتماع، استخدمي الأداة show_action عشان تطلع له على الشاشة، وبعدها علّقي بجملة قصيرة. الاتصال والرسالة النصية: تطلع له بطاقة وهو يضغط للتأكيد، ولازم رقم الجوال؛ إذا ما ذكره اطلبيه. البريد والاجتماعات عرض تجريبي للحين وغير مربوطة فعلياً، قولي له كذا بصراحة. لا تدّعين أبداً إنك اتصلتي أو أرسلتي بنفسك. وإذا ما تعرفين معلومة قوليها بدون اختراع.\n"+
   (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
   "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
@@ -300,7 +383,11 @@ function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
     systemInstruction:{parts:[{text:prompt()}]}};
-  if(attempt===0){s.inputAudioTranscription={};s.outputAudioTranscription={}}
+  if(attempt<2){s.inputAudioTranscription={};s.outputAudioTranscription={}}
+  if(attempt===0)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an animated on-screen card for a call, a text message (SMS), the email inbox, or a meeting.",
+    parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["call","sms","email","meeting"]},name:{type:"STRING",description:"Person or contact name"},
+      number:{type:"STRING",description:"Phone number with digits only, if the user said one"},text:{type:"STRING",description:"SMS body"},
+      title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}}]}];
   return {setup:s}}
 function connect(){
   ready=false;
@@ -312,7 +399,7 @@ function connect(){
   ws.onerror=function(){};
   ws.onclose=function(ev){
     if(!live)return;
-    if(!ready&&attempt===0&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt=1;connect();return}
+    if(!ready&&attempt<2&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt++;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
     stop();
     if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صالح. أدخل مفتاحًا جديدًا من الإعدادات.");openCard("set")}
@@ -325,6 +412,8 @@ function handle(m){
     var first=pendingText||(isEn()?"(Session start) Greet me in one short sentence and ask how you can help.":(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج."));
     if(pendingText){curMe=bubble("me",pendingText);pendingText=""}
     ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
+  if(m.toolCall&&m.toolCall.functionCalls){var out=m.toolCall.functionCalls.map(function(fc){var r;try{r=showAction(fc.args||{})}catch(e){r={shown:false}}return {id:fc.id,name:fc.name,response:r}});
+    ws.send(JSON.stringify({toolResponse:{functionResponses:out}}));return}
   var sc=m.serverContent;if(!sc)return;
   if(sc.interrupted)flush();
   if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#caption").textContent=curMe.textContent;$("#msgs").scrollTop=1e7}
@@ -359,7 +448,10 @@ $("#stage").onclick=function(){
   if($("#card").classList.contains("open")){closeCard();return}
   if(!live){start();return}
   if(ready&&speaking()){flush();dropTurn=true}};
-$("#endBtn").onclick=function(){userEnded=true;stop();$("#caption").textContent=""};
+$("#actClose").onclick=closeAction;
+$("#paneSet").addEventListener("click",function(e){var b=e.target.closest("[data-demo]");if(!b)return;var t=b.getAttribute("data-demo");closeCard();
+  showAction(t==="call"?{type:"call",name:"محمد"}:t==="sms"?{type:"sms",name:"محمد",text:"سأتأخر ربع ساعة عن الموعد."}:t==="email"?{type:"email"}:{type:"meeting",title:"اجتماع المتابعة",when:"الأحد، الساعة 11 صباحًا",name:"خالد"})});
+$("#endBtn").onclick=function(){closeAction();userEnded=true;stop();$("#caption").textContent=""};
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";
   if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}
   else{pendingText=v;start()}};
