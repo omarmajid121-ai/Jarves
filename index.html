@@ -151,6 +151,7 @@ body.acting .readout{opacity:0}
       <div class="group">
         <div class="cell"><span class="ic blue"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5z"></path></svg></span>
           <label for="nameIn">الاسم</label><input id="nameIn" type="text" autocomplete="off" placeholder="اختياري"></div>
+        <button class="cell plain" id="locBtn" type="button" style="display:flex;justify-content:space-between;gap:12px"><span>الموقع</span><span id="locState" style="color:var(--muted,#8E8E93)">غير مفعّل</span></button>
         <div class="cell"><span class="ic pink"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg></span>
           <label for="voiceIn">الصوت</label>
           <select id="voiceIn">
@@ -184,7 +185,7 @@ body.acting .readout{opacity:0}
 var $=function(s){return document.querySelector(s)};
 var MODEL="gemini-3.1-flash-live-preview";
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
-var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log"};
+var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
@@ -330,6 +331,22 @@ function endTurn(){if(curMe){pushLog("u",curMe.textContent);curMe=null}if(curAi)
 function nowText(){try{return new Date().toLocaleString("ar-SA-u-ca-gregory-nu-latn",{timeZone:"Asia/Riyadh",weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
 function isEn(){return (get(K.voice)||"").indexOf("en:")===0}
 function voiceName(){var v=get(K.voice)||"Kore";return v.indexOf("en:")===0?v.slice(3):v}
+function locObj(){try{return JSON.parse(get(K.loc)||"null")}catch(e){return null}}
+function locLabel(o){o=o||locObj();if(!o)return "";return [o.city,o.region,o.country].filter(Boolean).join("، ")||(o.lat.toFixed(3)+", "+o.lon.toFixed(3))}
+function locLine(en){var o=locObj();if(!o)return "";var w=locLabel(o)+" ("+o.lat.toFixed(4)+", "+o.lon.toFixed(4)+")";
+  return en?"The user's current location: "+w+". Use it for local time, weather, prayer times, directions and nearby places.\n":"موقع صاحبك الحالي: "+w+". استخدميه للأوقات والطقس ومواقيت الصلاة والاتجاهات والأماكن القريبة.\n"}
+function showLoc(){var e=$("#locState");if(!e)return;var o=locObj();e.textContent=o?locLabel(o):"غير مفعّل"}
+function getLoc(cb,force){
+  var done=false,fin=function(){if(done)return;done=true;showLoc();if(cb)cb()};
+  var o=locObj();if(o&&!force&&Date.now()-o.t<30*60000){fin();cb=null}
+  if(!navigator.geolocation){fin();return}
+  var tm=setTimeout(fin,7000);
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var c=pos.coords,rec={lat:c.latitude,lon:c.longitude,t:Date.now()};
+    fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+c.latitude+"&longitude="+c.longitude+"&localityLanguage="+(isEn()?"en":"ar"))
+      .then(function(r){return r.json()}).then(function(d){rec.city=d.city||d.locality||"";rec.region=d.principalSubdivision||"";rec.country=d.countryName||""})
+      .catch(function(){}).then(function(){set(K.loc,JSON.stringify(rec));clearTimeout(tm);fin();showLoc()})
+  },function(){clearTimeout(tm);fin()},{enableHighAccuracy:false,timeout:6500,maximumAge:600000})}
 function promptEn(){
   var name=get(K.name).trim();
   var past=log.slice(-14).map(function(l){return (l.r==="u"?"User: ":"You: ")+l.t}).join("\n");
@@ -338,7 +355,8 @@ function promptEn(){
   "When asked to call someone, write a text message, show email, or book a meeting, use the show_action tool to put it on screen, then comment in one short sentence. Calls and texts show a card the user taps to confirm and need a phone number; ask for it if missing. Email and meetings are previews only and not connected yet; say so plainly. Never claim you placed a call or sent anything yourself. If you do not know something, say so.\n"+
   "Always reply in English, even if the user speaks Arabic, unless he asks you to switch.\n"+
   (name?"The user's name is "+name+".\n":"")+
-  "Current time in Riyadh: "+nowText()+".\n"+
+  "Current time in Riyadh: "+nowText()+".\n"+locLine(true)+
+  "For anything current (weather, news, prices, prayer times, opening hours, places) use Google search when available, and be accurate.\n"+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
   if(isEn())return promptEn();
@@ -348,7 +366,8 @@ function prompt(){
   "ردودك قصيرة وواضحة، من جملة إلى ثلاث، إلا إذا طلب تفصيل. تجاوبين على أي سؤال، تناقشين وتعطين رأيك، وتكملين المحادثات الطويلة بسلاسة وتتذكرين اللي انقال فيها.\n"+
   "إذا طلب اتصال أو رسالة نصية أو عرض البريد أو حجز اجتماع، استخدمي الأداة show_action عشان تطلع له على الشاشة، وبعدها علّقي بجملة قصيرة. الاتصال والرسالة النصية: تطلع له بطاقة وهو يضغط للتأكيد، ولازم رقم الجوال؛ إذا ما ذكره اطلبيه. البريد والاجتماعات عرض تجريبي للحين وغير مربوطة فعلياً، قولي له كذا بصراحة. لا تدّعين أبداً إنك اتصلتي أو أرسلتي بنفسك. وإذا ما تعرفين معلومة قوليها بدون اختراع.\n"+
   (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
-  "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+
+  "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+locLine(false)+
+  "أي معلومة حالية (طقس، أخبار، أسعار، مواقيت صلاة، أوقات دوام، أماكن) ابحثي عنها في قوقل إذا متاح، وكوني دقيقة.\n"+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
 /* ================= audio ================= */
@@ -389,12 +408,13 @@ function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
     systemInstruction:{parts:[{text:prompt()}]}};
-  if(attempt<2){s.inputAudioTranscription={};s.outputAudioTranscription={};
+  if(attempt<3){s.inputAudioTranscription={};s.outputAudioTranscription={};
     s.realtimeInputConfig={automaticActivityDetection:{startOfSpeechSensitivity:"START_SENSITIVITY_HIGH",prefixPaddingMs:40,silenceDurationMs:600},activityHandling:"START_OF_ACTIVITY_INTERRUPTS"}}
-  if(attempt===0)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an animated on-screen card for a call, a text message (SMS), the email inbox, or a meeting.",
+  if(attempt<2)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an animated on-screen card for a call, a text message (SMS), the email inbox, or a meeting.",
     parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["call","sms","email","meeting"]},name:{type:"STRING",description:"Person or contact name"},
       number:{type:"STRING",description:"Phone number with digits only, if the user said one"},text:{type:"STRING",description:"SMS body"},
       title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}}]}];
+  if(attempt===0&&s.tools)s.tools.unshift({googleSearch:{}});
   return {setup:s}}
 function connect(){
   ready=false;
@@ -406,7 +426,7 @@ function connect(){
   ws.onerror=function(){};
   ws.onclose=function(ev){
     if(!live)return;
-    if(!ready&&attempt<2&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt++;connect();return}
+    if(!ready&&attempt<3&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt++;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
     stop();
     if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صالح. أدخل مفتاحًا جديدًا من الإعدادات.");openCard("set")}
@@ -438,7 +458,7 @@ function start(){
   try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
   navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}}).then(function(s){
     if(!live){s.getTracks().forEach(function(t){t.stop()});return}
-    mic=s;connect();
+    mic=s;getLoc(function(){if(live)connect()});
     try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(function(w){wake=w},function(){})}catch(e){}
   },function(){live=false;setMode("idle");note("اسمح باستخدام الميكروفون ثم اضغط على الشاشة.")})}
 function stop(){
@@ -467,6 +487,7 @@ $("#tabChat").onclick=function(){tab("chat")};$("#tabSet").onclick=function(){ta
 function openCard(which){if(which)tab(which);$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#saveBtn").onclick=function(){set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);if(live)stop();closeCard();if(get(K.key))start()};
+$("#locBtn").onclick=function(){$("#locState").textContent="جارٍ التحديد…";getLoc(null,true)};showLoc();
 $("#clearBtn").onclick=function(){log=[];set(K.log,"[]");renderLog()};
 /* drag the card by its grip */
 (function(){var card=$("#card"),grip=$("#grip"),y0=0,base=0,dy=0,drag=false,moved=false;
