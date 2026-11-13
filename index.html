@@ -6,38 +6,77 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="مساعد">
-<meta name="theme-color" content="#02040a">
+<meta name="theme-color" content="#000000">
 <title>مساعد</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap">
 <style>
-:root{
-  --void:#02040a; --panel:rgba(12,20,34,.78); --edge:rgba(160,215,255,.22); --ink:#eaf4ff; --soft:#9fb6cf; --ice:#6fd6ff; --rose:#ff7d8c;
-  --font:"Readex Pro",-apple-system,"SF Arabic","SF Pro Text","Segoe UI",Tahoma,sans-serif;
-  color-scheme:dark;
-}
+:root{--ink:#fff;--t2:rgba(235,235,245,.68);--ice:#64D2FF;--glass:rgba(255,255,255,.09);--gline:rgba(255,255,255,.16);--spring:cubic-bezier(.22,1,.36,1);
+  --font:-apple-system,"SF Arabic","SF Pro Text",system-ui,"Readex Pro","Segoe UI",Tahoma,sans-serif;color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
-body{background:var(--void);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden;
-  -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+body{background:#000;color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none;--a:#9AA8FF;--b:#6E7BFF;--c:#5FE4FF}
+body[data-mode=connect]{--a:#C4BCFF;--b:#766CE2;--c:#9AA8FF}
+body[data-mode=listen]{--a:#5FE4FF;--b:#6E7BFF;--c:#B57CFF}
+body[data-mode=speak]{--a:#FFC56B;--b:#FF7A59;--c:#FF4F8B}
 button,input,select{font:inherit;color:inherit}
 button,a,.cell,#stage{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ice);outline-offset:2px}
-#stage{position:fixed;inset:0;border:0;padding:0;margin:0;background:transparent;width:100%;height:100%;display:block}
+#amb{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#amb i{position:absolute;border-radius:50%;filter:blur(90px);transition:background-color 1.2s ease}
+#amb i:nth-child(1){width:360px;height:360px;left:-120px;top:10%;background-color:var(--b);opacity:.42;animation:drift 18s ease-in-out infinite alternate}
+#amb i:nth-child(2){width:320px;height:320px;right:-140px;top:42%;background-color:var(--c);opacity:.34;animation:drift 22s ease-in-out infinite alternate-reverse}
+#amb i:nth-child(3){width:280px;height:280px;left:15%;bottom:-160px;background-color:var(--a);opacity:.26}
+@keyframes drift{to{transform:translate(40px,-30px) scale(1.12)}}
+#stage{position:fixed;inset:0;z-index:1;border:0;padding:0;margin:0;background:transparent;width:100%;height:100%;display:block}
 #hud{position:absolute;inset:0;width:100%;height:100%;display:block}
-.readout{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 64px);display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 24px;pointer-events:none}
-#state{font-size:15px;font-weight:600;letter-spacing:0;color:var(--ice);min-height:20px;text-align:center}
-#caption{font-size:17px;color:var(--ink);text-align:center;max-width:460px;min-height:54px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;opacity:.92}
+#edge{position:fixed;inset:0;z-index:2;pointer-events:none;border-radius:44px;opacity:0;transition:opacity .6s ease;
+  box-shadow:inset 0 0 0 1.5px #5FE4FF,inset 0 0 22px 4px rgba(95,228,255,.55),inset 0 0 64px 12px rgba(181,124,255,.28),inset 0 -40px 80px -20px rgba(110,123,255,.35)}
+body[data-mode=listen] #edge{opacity:1;animation:glow 2.8s ease-in-out infinite}
+body.muted #edge{opacity:0;animation:none}
+@keyframes glow{0%,100%{opacity:.8}50%{opacity:1}}
+.gl{background:var(--glass);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);border:1px solid var(--gline);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 12px 32px rgba(0,0,0,.35)}
+.top{position:fixed;z-index:4;top:calc(env(safe-area-inset-top) + 12px);left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+.top>*{pointer-events:auto}
+.gb{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;padding:0;color:#fff;transition:transform .32s var(--spring)}
+.gb:active,.tool button:active,.chip:active{transform:scale(.94)}
+.pill{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:18px;font-size:15px;font-weight:600;max-width:60vw}
+#state{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live{display:none;align-items:center;gap:3px;height:14px;color:var(--a)}
+body[data-mode=listen] .live,body[data-mode=speak] .live{display:inline-flex}
+body.muted .live{display:none}
+.live i{display:block;width:3px;height:100%;border-radius:2px;background:currentColor;animation:bar 1.1s ease-in-out infinite}
+.live i:nth-child(1){height:50%}.live i:nth-child(2){animation-delay:.15s}.live i:nth-child(3){height:70%;animation-delay:.3s}.live i:nth-child(4){height:90%;animation-delay:.45s}.live i:nth-child(5){height:45%;animation-delay:.6s}
+@keyframes bar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+#caption{position:fixed;z-index:3;left:24px;right:24px;top:var(--capTop,62%);margin:0 auto;max-width:520px;pointer-events:none;text-align:center;font-size:28px;line-height:37px;font-weight:600;text-wrap:balance;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;transition:opacity .25s ease}
+#chips{position:fixed;z-index:4;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 118px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;transition:opacity .25s ease}
+.chip{height:40px;padding:0 16px;border-radius:20px;color:#fff;font-size:15px;transition:transform .32s var(--spring)}
+body[data-mode=speak] #chips,body[data-mode=connect] #chips{opacity:0;pointer-events:none}
+.tool{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);display:flex;align-items:center;gap:20px;padding:8px;border-radius:40px;transition:opacity .25s ease}
+.tool button{width:56px;height:56px;border-radius:28px;border:0;background:transparent;color:#fff;display:grid;place-items:center;padding:0;transition:transform .32s var(--spring),background-color .3s ease,opacity .3s ease}
+.tool #micBtn{width:64px;height:64px;border-radius:32px;background:#fff;color:#000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+body.muted #micBtn{background:rgba(255,255,255,.16);color:#fff}
+body[data-mode=idle] #xBtn{opacity:.35}
+body.acting #caption,body.acting #chips,body.acting .tool{opacity:0;pointer-events:none}
+#toast{position:fixed;z-index:12;left:16px;right:16px;margin:0 auto;max-width:420px;top:calc(env(safe-area-inset-top) + 66px);display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 14px 6px 8px;border-radius:22px;font-size:15px;
+  opacity:0;transform:translateY(-12px);pointer-events:none;transition:opacity .3s ease,transform .45s var(--spring)}
+#toast.on{opacity:1;transform:none;pointer-events:auto}
+#toast .ok{color:#30D158;display:flex;flex:none}
+#toastT{flex:1;min-width:0;overflow-wrap:anywhere}
+#toastU{height:32px;padding:0 12px;border-radius:16px;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:14px;flex:none}
+@media (max-height:700px){#caption{font-size:24px;line-height:32px;-webkit-line-clamp:2}}
 /* iOS sheet */
 :root{--blue:#0A84FF;--red:#FF453A;--label:#FFFFFF;--label2:rgba(235,235,245,.62);--label3:rgba(235,235,245,.32);--sep:rgba(84,84,88,.65);--fill:rgba(118,118,128,.24);--cell:rgba(118,118,128,.18)}
 #card{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:540px;height:86%;z-index:10;display:flex;flex-direction:column;
   background:rgba(28,28,30,.72);border:.5px solid rgba(255,255,255,.14);border-bottom:0;border-radius:38px 38px 0 0;
   -webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 -20px 60px rgba(0,0,0,.6);
-  transform:translateY(calc(100% - 44px - env(safe-area-inset-bottom)));transition:transform .45s cubic-bezier(.32,.72,0,1)}
-#card.open{transform:translateY(0)}
+  transform:translateY(105%);visibility:hidden;transition:transform .45s cubic-bezier(.32,.72,0,1),visibility 0s .45s}
+#card.open{transform:translateY(0);visibility:visible;transition:transform .45s cubic-bezier(.32,.72,0,1)}
 #card.drag{transition:none}
 #grip{flex:none;height:44px;border:0;background:transparent;display:flex;align-items:flex-start;justify-content:center;width:100%;padding:6px 0 0;touch-action:none}
 #grip i{display:block;width:36px;height:5px;border-radius:3px;background:var(--label3)}
@@ -45,7 +84,7 @@ button{cursor:pointer}
 .head{display:flex;flex-direction:column;gap:0;padding:0 4px}
 .head h1{margin:0;font-size:32px;line-height:44px;font-weight:600;letter-spacing:0}
 .head small{color:var(--label2);font-size:15px;line-height:20px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:2px;border-radius:9px;background:var(--fill)}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:2px;border-radius:9px;background:var(--fill)}
 .seg button{min-height:32px;border:0;border-radius:7px;background:transparent;color:var(--label);font-weight:500;font-size:13px}
 .seg button[aria-selected="true"]{background:#636366;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)}
 .pane{flex:1;min-height:0;display:none;flex-direction:column;gap:12px}
@@ -105,11 +144,44 @@ body.acting .readout{opacity:0}
 #actClose{background:var(--fill);color:var(--label)}
 .ic.violet{background:#BF5AF2}.ic.teal{background:#40C8E0}
 @media (prefers-reduced-motion:reduce){#card,#act{transition:none}.skel i{animation:none}}
+#act{left:8px;right:8px;max-width:420px;bottom:calc(env(safe-area-inset-bottom) + 8px);border-radius:40px;padding:22px 18px 18px;gap:14px;background:rgba(28,28,32,.66);border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%)}
+#actTitle{font-size:20px;line-height:26px;font-weight:700}
+#actBody{font-size:16px;line-height:24px;color:#fff;max-height:42vh;overflow-y:auto}
+.abtns a,.abtns button{min-height:56px;border-radius:28px;transition:transform .32s var(--spring)}
+.abtns a:active,.abtns button:active{transform:scale(.97)}
+#actGo{background:#fff;color:#000}
+body[data-act=call] #actGo{background:#30D158;color:#00210C}
+#actClose{background:rgba(255,255,255,.12)}
+#panePf{overflow-y:auto;-webkit-overflow-scrolling:touch;gap:10px}
+#pfSum{font-size:15px;color:var(--label2);padding:0 16px}
+.pfi .tt{flex:1;min-width:0;display:flex;flex-direction:column;padding:8px 0}
+.pfi .n{font-size:17px;line-height:22px}
+.pfi .s{font-size:13px;line-height:18px;color:var(--label2)}
+.pfi .del{width:44px;height:44px;border:0;background:transparent;color:var(--red);display:grid;place-items:center;padding:0;flex:none}
+@media (prefers-reduced-motion:reduce){#amb i,.live i,#edge{animation:none!important}}
 </style>
 </head>
-<body>
+<body data-mode="idle">
+<div id="amb" aria-hidden="true"><i></i><i></i><i></i></div>
 <button id="stage" aria-label="مساعد: اضغط للبدء أو للمقاطعة"><canvas id="hud" aria-hidden="true"></canvas></button>
-<div class="readout" aria-live="polite"><div id="state">اضغط للبدء</div><div id="caption"></div></div>
+<div id="edge" aria-hidden="true"></div>
+<header class="top">
+  <button class="gb gl" id="pfBtn" aria-label="محفظتي"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L19 8"></path></svg></button>
+  <div class="pill gl" aria-live="polite"><span class="live" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span id="state">اضغط للبدء</span></div>
+  <button class="gb gl" id="setBtn" aria-label="الإعدادات"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"></path></svg></button>
+</header>
+<div id="caption" aria-live="polite"></div>
+<div id="chips">
+  <button class="chip gl" data-say="عطيني ملخص يومي">ملخص اليوم</button>
+  <button class="chip gl" data-say="كيف محفظتي؟">كيف محفظتي؟</button>
+  <button class="chip gl" data-say="وش الطقس الحين؟">الطقس الآن</button>
+</div>
+<nav class="tool gl" aria-label="التحكم">
+  <button id="kbBtn" aria-label="اكتب بدل الكلام"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"></rect><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9"></path></svg></button>
+  <button id="micBtn" aria-label="ابدأ، أو أغلق الميكروفون"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"></path></svg></button>
+  <button id="xBtn" aria-label="إنهاء المحادثة"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+</nav>
+<div id="toast" class="gl" role="status"><span class="ok" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span id="toastT"></span><button id="toastU" type="button">تراجع</button></div>
 
 <div id="act" role="status" aria-live="polite">
   <div class="arow"><span class="ic" id="actIc"></span><div class="tt"><div id="actTitle"></div><div id="actTag"></div></div></div>
@@ -124,6 +196,7 @@ body.acting .readout{opacity:0}
     <div class="head"><h1>مساعد</h1><small id="conn">غير متصل</small></div>
     <div class="seg" role="tablist">
       <button role="tab" id="tabChat" aria-selected="true">المحادثة</button>
+      <button role="tab" id="tabPf" aria-selected="false">المحفظة</button>
       <button role="tab" id="tabSet" aria-selected="false">الإعدادات</button>
     </div>
     <div class="pane on" id="paneChat">
@@ -136,6 +209,13 @@ body.acting .readout{opacity:0}
         </div>
         <button type="button" class="round endbtn" id="endBtn" aria-label="إنهاء المحادثة" hidden><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
       </form>
+    </div>
+    <div class="pane" id="panePf">
+      <p id="pfEmpty" class="empty">قل لمساعد: «شريت ٥٠ سهم الراجحي على ٩٤» وستُحفظ هنا.</p>
+      <div id="pfSum"></div>
+      <ul id="pfList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
+      <p class="gftr">تُحفظ محفظتك على هذا الجهاز فقط. للمتابعة فقط، وليست توصية بالبيع أو الشراء.</p>
+      <div class="group" id="pfClearG" hidden><button class="cell plain danger" id="pfClear">مسح المحفظة</button></div>
     </div>
     <div class="pane settings" id="paneSet">
       <p class="ghdr">مفتاح التفعيل</p>
@@ -173,6 +253,7 @@ body.acting .readout{opacity:0}
         <button class="cell plain" data-demo="sms">رسالة نصية</button>
         <button class="cell plain" data-demo="email">البريد</button>
         <button class="cell plain" data-demo="meeting">اجتماع</button>
+        <button class="cell plain" data-demo="pf">المحفظة</button>
       </div>
       <p class="gftr">عرض تجريبي لما يظهر عند طلب اتصال أو رسالة أو بريد أو اجتماع.</p>
       <div class="group"><button class="cell plain danger" id="clearBtn">مسح سجل المحادثة</button></div>
@@ -186,28 +267,28 @@ body.acting .readout{opacity:0}
 var $=function(s){return document.querySelector(s)};
 var MODEL="gemini-3.1-flash-live-preview";
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
-var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc"};
+var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
 var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null,anIn=null,anOut=null,outBus=null;
 var live=false,ready=false,attempt=0,nextT=0,playing=[],dropTurn=false,pendingText="",mode="idle",startedAt=0,userEnded=false;
-var log=[],curMe=null,curAi=null;
+var log=[],curMe=null,curAi=null,muted=false;
 try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
 
 /* ================= HUD ================= */
 var cv=$("#hud"),g=cv.getContext("2d"),W=0,H=0,DPR=1,still=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-var PAL={idle:[[70,150,215],[36,84,150]],connect:[[196,188,255],[118,108,226]],listen:[[96,224,255],[44,150,255]],speak:[[255,196,96],[255,122,62]],
-  call:[[112,240,164],[26,150,104]],sms:[[104,236,226],[24,140,170]],email:[[140,196,255],[58,104,232]],meeting:[[206,166,255],[118,84,232]]};
+var PAL={idle:[[154,168,255],[110,123,255],[95,228,255]],connect:[[196,188,255],[118,108,226],[154,168,255]],listen:[[95,228,255],[110,123,255],[181,124,255]],speak:[[255,197,107],[255,122,89],[255,79,139]],
+  call:[[92,240,160],[44,198,160],[79,168,255]],sms:[[104,236,226],[24,140,170],[110,123,255]],email:[[140,196,255],[58,104,232],[181,124,255]],meeting:[[206,166,255],[118,84,232],[95,228,255]],pf:[[92,240,160],[44,198,160],[95,228,255]]};
 var act=null,lastMode="idle",antic=0,flash=0;
-var c1=PAL.idle[0].slice(),c2=PAL.idle[1].slice(),amp=0,freq=new Uint8Array(64),bars=new Float32Array(72);
-function fit(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR)}
+var c1=PAL.idle[0].slice(),c2=PAL.idle[1].slice(),c3=PAL.idle[2].slice(),amp=0,freq=new Uint8Array(64),bars=new Float32Array(72);
+function fit(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);document.documentElement.style.setProperty("--capTop",Math.round(H*.33+Math.min(W*.15,H*.105)*2.86+18)+"px")}
 window.addEventListener("resize",fit);fit();
 function rgba(c,a){return "rgba("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+","+a+")"}
 function arc(r,a0,a1,w,col){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(0,0,r,a0,a1);g.stroke()}
 function frame(now){
   var t=now/1000,P=act?PAL[act.type]:(PAL[mode]||PAL.idle),i;
-  for(i=0;i<3;i++){c1[i]+=(P[0][i]-c1[i])*.07;c2[i]+=(P[1][i]-c2[i])*.07}
+  for(i=0;i<3;i++){c1[i]+=(P[0][i]-c1[i])*.07;c2[i]+=(P[1][i]-c2[i])*.07;c3[i]+=(P[2][i]-c3[i])*.07}
   /* audio level */
   var an=mode==="speak"?anOut:mode==="listen"?anIn:null,target=0;
   if(an){an.getByteFrequencyData(freq);var s=0;for(i=2;i<40;i++)s+=freq[i];target=Math.min(1,s/38/150)}
@@ -218,7 +299,7 @@ function frame(now){
   if(live&&ctx&&ctx.state!=="running")$("#state").textContent="اضغط على الشاشة لتشغيل الصوت";
 
   g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,W,H);
-  var m=Math.min(W,H),R=m*.15,cx=W/2,cy=H*.42;
+  var m=Math.min(W,H),R=Math.min(W*.15,H*.105),cx=W/2,cy=H*.33;
   /* field glow */
   var bg=g.createRadialGradient(cx,cy,R*.2,cx,cy,m*.95);
   bg.addColorStop(0,rgba(c2,Math.min(.9,.30+amp*.25+flash*.35)));bg.addColorStop(.45,rgba(c2,.07));bg.addColorStop(1,"rgba(2,4,10,0)");
@@ -244,7 +325,7 @@ function frame(now){
 
   /* segmented ring */
   g.save();g.rotate(t*.22);g.lineCap="butt";
-  for(i=0;i<36;i++){var sa=i/36*6.2832,lg=i%3===0;arc(R*1.98,sa,sa+(lg?.13:.07),lg?7:4,rgba(i%9===0?c1:c2,lg?.85:.5))}
+  for(i=0;i<36;i++){var sa=i/36*6.2832,lg=i%3===0;arc(R*1.98,sa,sa+(lg?.13:.07),lg?7:4,rgba(i%9===0?c1:(i%2?c2:c3),lg?.85:.5))}
   g.restore();
 
   /* voice spectrum: 72 radial bars, mirrored */
@@ -252,24 +333,33 @@ function frame(now){
   for(i=0;i<72;i++){var k=i<36?i:71-i,v=freq[2+Math.floor(k*.9)]/255;
     if(!an)v=.10+.07*Math.sin(t*2.2+k*.55)+(mode==="connect"?.18*Math.max(0,Math.sin(t*5-k*.3)):0);
     bars[i]+=(v-bars[i])*.35;var b=bars[i],ba=i/72*6.2832-1.5708,q0=R*1.22,q1=q0+R*(.05+b*.62);
-    g.strokeStyle=rgba(b>.55?c1:c2,.35+b*.65);g.lineWidth=Math.max(2,R*.035);
+    g.strokeStyle=rgba(b>.55?c1:(i%2?c2:c3),.35+b*.65);g.lineWidth=Math.max(2,R*.035);
     g.beginPath();g.moveTo(Math.cos(ba)*q0,Math.sin(ba)*q0);g.lineTo(Math.cos(ba)*q1,Math.sin(ba)*q1);g.stroke()}
 
   if(act)drawAct(t,R);
-  /* core */
-  var cr=R*(1+amp*.16);
-  var halo=g.createRadialGradient(0,0,cr*.2,0,0,cr*1.5);halo.addColorStop(0,rgba(c1,.55));halo.addColorStop(1,rgba(c1,0));
-  g.fillStyle=halo;g.beginPath();g.arc(0,0,cr*1.5,0,7);g.fill();
-  var core=g.createRadialGradient(0,0,0,0,0,cr);
-  core.addColorStop(0,act?rgba(c2,.95):"rgba(255,255,255,"+(.85+amp*.15)+")");core.addColorStop(.22,rgba(c1,.95));core.addColorStop(.7,rgba(c2,.55));core.addColorStop(1,rgba(c2,.05));
-  g.fillStyle=core;g.beginPath();g.arc(0,0,cr,0,7);g.fill();
-  arc(cr,0,6.2832,2,rgba(c1,.9));
-  /* iris: twelve blades breathing with the voice */
+  /* core: glass sphere */
+  var cr=R*(1+amp*.16),hg;
+  var halo=g.createRadialGradient(0,0,cr*.2,0,0,cr*1.6);halo.addColorStop(0,rgba(c1,.6));halo.addColorStop(.6,rgba(c3,.16));halo.addColorStop(1,rgba(c1,0));
+  g.fillStyle=halo;g.beginPath();g.arc(0,0,cr*1.6,0,7);g.fill();
+  g.save();g.beginPath();g.arc(0,0,cr,0,7);g.clip();
+  if(g.createConicGradient){var cg=g.createConicGradient(t*.7,0,0);cg.addColorStop(0,rgba(c1,1));cg.addColorStop(.33,rgba(c2,1));cg.addColorStop(.66,rgba(c3,1));cg.addColorStop(1,rgba(c1,1));
+    g.fillStyle=cg;g.fillRect(-cr,-cr,cr*2,cr*2);g.globalCompositeOperation="screen";
+    var cg2=g.createConicGradient(2-t*.45,0,0);cg2.addColorStop(0,rgba(c3,.75));cg2.addColorStop(.4,rgba(c1,.75));cg2.addColorStop(.75,rgba(c2,.75));cg2.addColorStop(1,rgba(c3,.75));
+    g.fillStyle=cg2;g.beginPath();g.arc(0,0,cr*.84,0,7);g.fill();g.globalCompositeOperation="source-over"}
+  else{var rg=g.createRadialGradient(-cr*.3,-cr*.3,0,0,0,cr);rg.addColorStop(0,rgba(c1,1));rg.addColorStop(.55,rgba(c2,1));rg.addColorStop(1,rgba(c3,1));g.fillStyle=rg;g.fillRect(-cr,-cr,cr*2,cr*2)}
+  var cw=g.createRadialGradient(0,0,0,0,0,cr);cw.addColorStop(0,act?rgba(c2,.85):"rgba(255,255,255,"+(.7+amp*.3)+")");cw.addColorStop(.42,rgba(c1,.3));cw.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=cw;g.fillRect(-cr,-cr,cr*2,cr*2);
+  var sh=g.createLinearGradient(0,-cr,0,cr);sh.addColorStop(0,"rgba(255,255,255,.3)");sh.addColorStop(.34,"rgba(255,255,255,0)");sh.addColorStop(.7,"rgba(0,0,0,0)");sh.addColorStop(1,"rgba(0,0,0,.3)");
+  g.fillStyle=sh;g.fillRect(-cr,-cr,cr*2,cr*2);
+  g.save();g.translate(-cr*.2,-cr*.58);g.rotate(-.3);g.scale(1,.42);hg=g.createRadialGradient(0,0,0,0,0,cr*.42);hg.addColorStop(0,"rgba(255,255,255,.75)");hg.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=hg;g.beginPath();g.arc(0,0,cr*.42,0,7);g.fill();g.restore();
+  g.restore();
+  arc(cr,0,6.2832,1.5,"rgba(255,255,255,.5)");arc(cr*1.13,0,6.2832,1,rgba(c1,.35));
   if(act){glyph(act.type,cr)}else{
   g.save();g.rotate(-t*.4);g.lineCap="butt";
-  for(i=0;i<12;i++){var ia=i/12*6.2832;arc(cr*.66,ia,ia+.2+amp*.22,cr*.1,"rgba(255,255,255,"+(.28+amp*.5)+")")}
+  for(i=0;i<12;i++){var ia=i/12*6.2832;arc(cr*.7,ia,ia+.16+amp*.2,cr*.07,"rgba(255,255,255,"+(.2+amp*.45)+")")}
   g.restore();
-  g.save();g.rotate(t*.9);arc(cr*.42,0,2.2,2,"rgba(255,255,255,.7)");arc(cr*.42,3.3,4.6,2,"rgba(255,255,255,.45)");g.restore();}
+  g.save();g.rotate(t*.9);g.lineCap="round";arc(cr*.44,0,2.2,2,"rgba(255,255,255,.75)");arc(cr*.44,3.3,4.6,2,"rgba(255,255,255,.5)");g.restore();}
   g.restore();
   if(!still)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
@@ -278,7 +368,7 @@ if(still)setInterval(function(){frame(performance.now())},400);
 function drawAct(t,R){
   var e=t-act.t0,k,pz;g.lineCap="round";
   if(e<1.4){var a=e*9;arc(R*2.86,a,a+1.3,4,rgba(c1,1-e/1.4));arc(R*2.34,-a,-a+1,3,rgba(c1,1-e/1.4))}
-  if(act.type==="call"){for(k=0;k<4;k++){pz=(e*.55+k*.25)%1;arc(R*(1.25+pz*2.3),0,6.2832,2.5,rgba(c1,(1-pz)*.75))}}
+  if(act.type==="call"||act.type==="pf"){for(k=0;k<4;k++){pz=(e*.55+k*.25)%1;arc(R*(1.25+pz*2.3),0,6.2832,2.5,rgba(c1,(1-pz)*.75))}}
   else if(act.type==="sms"){for(k=0;k<5;k++){pz=(e*.8+k*.2)%1;var w=.34*(1-pz)+.05;arc(R*(1.3+pz*2),-1.5708-w,-1.5708+w,3,rgba(c1,1-pz))}}
   else if(act.type==="email"){for(k=0;k<20;k++){pz=(e*.3+k/20)%1;var an=k*1.37+pz*3.6,rd=R*(3.1-pz*1.95);
       g.save();g.translate(Math.cos(an)*rd,Math.sin(an)*rd);g.rotate(an);g.fillStyle=rgba(c1,Math.min(1,pz*2.2)*(1-pz*pz));g.fillRect(-7,-4.5,14,9);g.restore()}}
@@ -293,20 +383,23 @@ function glyph(type,s){
   else if(type==="email"){g.beginPath();g.rect(-s*.48,-s*.32,s*.96,s*.64);g.stroke();g.beginPath();g.moveTo(-s*.48,-s*.3);g.lineTo(0,s*.08);g.lineTo(s*.48,-s*.3);g.stroke()}
   else if(type==="sms"){g.beginPath();g.moveTo(-s*.46,-s*.34);g.lineTo(s*.46,-s*.34);g.lineTo(s*.46,s*.2);g.lineTo(-s*.12,s*.2);g.lineTo(-s*.34,s*.42);g.lineTo(-s*.3,s*.2);g.lineTo(-s*.46,s*.2);g.closePath();g.stroke();
     var tt=performance.now()/260;for(var d=0;d<3;d++){g.globalAlpha=.35+.65*Math.max(0,Math.sin(tt-d*.9));g.beginPath();g.arc((d-1)*s*.22,-s*.07,s*.055,0,7);g.fill()}g.globalAlpha=1}
+  else if(type==="pf"){g.beginPath();g.moveTo(-s*.46,s*.3);g.lineTo(-s*.14,-s*.02);g.lineTo(s*.1,s*.16);g.lineTo(s*.46,-s*.32);g.stroke();g.beginPath();g.moveTo(s*.2,-s*.34);g.lineTo(s*.46,-s*.32);g.lineTo(s*.44,-s*.06);g.stroke()}
   else{g.beginPath();g.rect(-s*.42,-s*.34,s*.84,s*.74);g.stroke();g.beginPath();g.moveTo(-s*.42,-s*.12);g.lineTo(s*.42,-s*.12);g.moveTo(-s*.2,-s*.46);g.lineTo(-s*.2,-s*.26);g.moveTo(s*.2,-s*.46);g.lineTo(s*.2,-s*.26);g.stroke();
     g.beginPath();g.arc(s*.14,s*.16,s*.08,0,7);g.fill()}
   g.restore()}
 var ICON={call:['green','<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"></path>'],
   sms:['teal','<path d="M4 5h16v11H10l-5 4v-4H4z"></path>'],email:['blue','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path>'],
   meeting:['violet','<rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path>']};
+ICON.pf=['green','<path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L19 8"></path>'];
 var typeT=null,actT=null;
 function typeInto(el,text){clearInterval(typeT);el.textContent="";var i=0;if(!text)return;typeT=setInterval(function(){i+=2;el.textContent=text.slice(0,i);if(i>=text.length)clearInterval(typeT)},22)}
 function showAction(a){
-  a=a||{};var type={call:1,sms:1,email:1,meeting:1}[a.type]?a.type:"call";
+  a=a||{};var type={call:1,sms:1,email:1,meeting:1,pf:1}[a.type]?a.type:"call";
   var name=String(a.name||"").slice(0,60),num=String(a.number||"").replace(/[^\d+]/g,"").slice(0,20),text=String(a.text||"").slice(0,400);
   var title="",tag="",body="",go="",goText="",real=false;
   if(type==="call"){title=name?"اتصال بـ "+name:"اتصال";if(num){body=num;go="tel:"+num;goText="اتصال";tag="جاهز للاتصال";real=true}else{body="لم يُحدَّد رقم الهاتف.";tag="يتطلب رقمًا"}}
   else if(type==="sms"){title=name?"رسالة إلى "+name:"رسالة نصية";body=text||"لم يُحدَّد نص الرسالة.";if(num){go="sms:"+num+"&body="+encodeURIComponent(text);goText="فتح الرسائل";tag="جاهزة للإرسال";real=true}else{tag="يتطلب رقمًا"}}
+  else if(type==="pf"){title="محفظتك";tag=String(a.tag||"");body=String(a.body||"");go="#";goText="فتح المحفظة"}
   else if(type==="email"){title="البريد الوارد";tag="عرض تجريبي";body="البريد غير مرتبط بعد. سيظهر هنا ملخص رسائلك عند الربط."}
   else{title=String(a.title||"اجتماع").slice(0,80);tag="عرض تجريبي";body=[a.when?"الموعد: "+String(a.when).slice(0,80):"",name?"مع: "+name:"","التقويم غير مرتبط بعد."].filter(Boolean).join("\n")}
   var ic=ICON[type];$("#actIc").className="ic "+ic[0];
@@ -314,12 +407,12 @@ function showAction(a){
   $("#actTitle").textContent=title;$("#actTag").textContent=tag;typeInto($("#actBody"),body);
   $("#actSkel").hidden=type!=="email";
   var goEl=$("#actGo");if(go){goEl.href=go;goEl.textContent=goText;goEl.hidden=false}else{goEl.hidden=true;goEl.removeAttribute("href")}
-  act={type:type,t0:performance.now()/1000};$("#act").classList.add("on");document.body.classList.add("acting");
+  act={type:type,t0:performance.now()/1000};$("#act").classList.add("on");document.body.classList.add("acting");document.body.dataset.act=type;
   clearTimeout(actT);actT=setTimeout(closeAction,30000);
   return {shown:true,ready_for_user_tap:real,note:real?"A card is on screen; the user taps it to confirm.":(type==="call"||type==="sms")?"Shown without a phone number; ask for the number.":"Preview only; this service is not connected yet."}}
 function closeAction(){clearTimeout(actT);clearInterval(typeT);act=null;$("#act").classList.remove("on");document.body.classList.remove("acting")}
-var LABEL={idle:"اضغط للبدء",connect:"جارٍ الاتصال…",listen:"أستمع إليك",speak:"اضغط للمقاطعة"};
-function setMode(m){mode=m;$("#state").textContent=LABEL[m];$("#conn").textContent=m==="idle"?"غير متصل":m==="connect"?"جارٍ الاتصال":"متصل";$("#endBtn").hidden=m==="idle"}
+var LABEL={idle:"اضغط للبدء",connect:"جارٍ الاتصال…",listen:"أستمع",speak:"تتكلم · المس للمقاطعة"};
+function setMode(m){mode=m;document.body.dataset.mode=m;$("#state").textContent=(m==="listen"&&muted)?"الميكروفون مغلق":LABEL[m];$("#conn").textContent=m==="idle"?"غير متصل":m==="connect"?"جارٍ الاتصال":"متصل";$("#endBtn").hidden=m==="idle"}
 
 /* ================= transcript ================= */
 function bubble(cls,text){var e=$("#msgs .empty");if(e)e.remove();var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#msgs").appendChild(d);$("#msgs").scrollTop=1e7;return d}
@@ -360,6 +453,7 @@ function promptEn(){
   (name?"The user's name is "+name+".\n":"")+
   "Current time in Riyadh: "+nowText()+".\n"+locLine(true)+
   "For anything current (weather, news, prices, prayer times, opening hours, places) use Google search when available, and be accurate. If you need his location and it is not given above, call get_location.\n"+
+  "Portfolio: when he says he bought or sold shares, or sets a price target, call portfolio_update at once and confirm in one sentence. When he asks about his portfolio or a stock he holds, search Google for the latest price, then call show_portfolio with the quotes you found, and tell him the price, his gain or loss against his cost, and the distance to his target. Say prices may be delayed. Never recommend buying, selling or holding and never predict prices; if he asks whether to buy or sell, say the decision is his and give facts only. Use the same stock name already in the portfolio.\n"+pfLine(true)+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
   if(isEn())return promptEn();
@@ -371,6 +465,7 @@ function prompt(){
   (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
   "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+locLine(false)+
   "أي معلومة حالية (طقس، أخبار، أسعار، مواقيت صلاة، أوقات دوام، أماكن) ابحثي عنها في قوقل إذا متاح، وكوني دقيقة. وإذا احتجتي موقعه وما هو مذكور فوق، استخدمي get_location.\n"+
+  "المحفظة: إذا قال إنه شرى أو باع أسهم أو حدد هدف سعر، استخدمي portfolio_update على طول وأكدي له بجملة. وإذا سأل عن محفظته أو عن سهم عنده، ابحثي في قوقل عن آخر سعر، ثم استخدمي show_portfolio ومرري الأسعار اللي لقيتيها، وقولي له السعر وربحه أو خسارته عن سعر شرائه وكم باقي على هدفه. نبهيه إن الأسعار ممكن تكون متأخرة. ممنوع تعطين توصية شراء أو بيع أو تتوقعين سعر؛ وإذا سألك «أبيع ولا أشتري؟» قولي إن القرار له وأعطيه الحقائق بس. استخدمي نفس اسم السهم الموجود في المحفظة.\n"+pfLine(false)+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
 /* ================= audio ================= */
@@ -398,7 +493,7 @@ function startMic(){
   src=ctx.createMediaStreamSource(mic);proc=ctx.createScriptProcessor(4096,1,1);mute=ctx.createGain();mute.gain.value=0;
   src.connect(anIn);src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);
   proc.onaudioprocess=function(e){
-    if(!ws||ws.readyState!==1||!ready)return;
+    if(!ws||ws.readyState!==1||!ready||muted)return;
     var f=e.inputBuffer.getChannelData(0);
     if(speaking()&&!dropTurn){var q=0;for(var i=0;i<f.length;i+=4)q+=f[i]*f[i];var r=Math.sqrt(q/(f.length/4));
       if(r>Math.max(0.045,floor*3)){if(++hot>=2){flush();dropTurn=true;hot=0;clearTimeout(bargeT);bargeT=setTimeout(function(){dropTurn=false},2500);setMode("listen")}}
@@ -417,7 +512,12 @@ function setupMsg(){
     parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["call","sms","email","meeting"]},name:{type:"STRING",description:"Person or contact name"},
       number:{type:"STRING",description:"Phone number with digits only, if the user said one"},text:{type:"STRING",description:"SMS body"},
       title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}},
-    {name:"get_location",description:"Get the user's current city and coordinates. Call it only when the answer needs his location: weather, prayer times, nearby places, directions, local time elsewhere. The phone asks his permission the first time."}]}];
+    {name:"get_location",description:"Get the user's current city and coordinates. Call it only when the answer needs his location: weather, prayer times, nearby places, directions, local time elsewhere. The phone asks his permission the first time."},
+    {name:"portfolio_update",description:"Save a change to the user's stock portfolio on this device. Call it whenever he says he bought or sold shares, wants a holding removed, or sets a price target.",
+      parameters:{type:"OBJECT",properties:{action:{type:"STRING",enum:["buy","sell","remove","set_target"]},name:{type:"STRING",description:"Company or stock name; reuse the name already in the portfolio"},
+        symbol:{type:"STRING",description:"Ticker or Tadawul code, if known"},shares:{type:"NUMBER"},price:{type:"NUMBER",description:"Price per share he paid or got"},target:{type:"NUMBER",description:"His target price, for set_target"}},required:["action","name"]}},
+    {name:"show_portfolio",description:"Show the user's portfolio card on screen and get his holdings back. Pass the latest prices you found by search so the card can show value and gain.",
+      parameters:{type:"OBJECT",properties:{quotes:{type:"ARRAY",items:{type:"OBJECT",properties:{name:{type:"STRING"},price:{type:"NUMBER"}},required:["name","price"]}}}}}]}];
   if(attempt===0&&s.tools)s.tools.unshift({googleSearch:{}});
   return {setup:s}}
 function connect(){
@@ -448,7 +548,7 @@ function handle(m){
     fcs.forEach(function(fc,ix){
       if(fc.name==="get_location"){$("#state").textContent="أحدد موقعك…";getLoc(function(){var o=locObj();
         out[ix]={id:fc.id,name:fc.name,response:o?{city:o.city||"",region:o.region||"",country:o.country||"",latitude:+o.lat.toFixed(3),longitude:+o.lon.toFixed(3)}:{available:false,reason:"Location permission was not given or is unavailable. Ask him for his city instead."}};done()})}
-      else{var r;try{r=showAction(fc.args||{})}catch(e){r={shown:false}}out[ix]={id:fc.id,name:fc.name,response:r};done()}});return}
+      else{var r;try{r=fc.name==="portfolio_update"?pfUpdate(fc.args||{}):fc.name==="show_portfolio"?showPortfolio(fc.args||{}):showAction(fc.args||{})}catch(e){r={ok:false,shown:false}}out[ix]={id:fc.id,name:fc.name,response:r};done()}});return}
   var sc=m.serverContent;if(!sc)return;
   if(sc.interrupted){flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
   if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#caption").textContent=curMe.textContent;$("#msgs").scrollTop=1e7}
@@ -470,12 +570,67 @@ function start(){
     try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(function(w){wake=w},function(){})}catch(e){}
   },function(){live=false;setMode("idle");note("اسمح باستخدام الميكروفون ثم اضغط على الشاشة.")})}
 function stop(){
-  live=false;ready=false;endTurn();flush();dropTurn=false;
+  live=false;ready=false;endTurn();flush();dropTurn=false;muted=false;document.body.classList.remove("muted");
   try{if(ws){ws.onclose=null;ws.close()}}catch(e){}ws=null;
   try{if(proc){proc.onaudioprocess=null;proc.disconnect()}if(src)src.disconnect();if(mute)mute.disconnect()}catch(e){}proc=src=mute=null;
   try{if(mic)mic.getTracks().forEach(function(t){t.stop()})}catch(e){}mic=null;
   try{if(wake)wake.release()}catch(e){}wake=null;
   setMode("idle")}
+
+/* ================= portfolio ================= */
+function fmt(n){return (Math.round(n*100)/100).toLocaleString("en-US",{maximumFractionDigits:2})}
+function pfGet(){try{var a=JSON.parse(get(K.pf)||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function pfSet(a){set(K.pf,JSON.stringify(a.slice(0,60)))}
+function pfKey(x){return String(x||"").trim().toLowerCase().replace(/\s+/g," ")}
+function pfFind(a,name,sym){var kn=pfKey(name),ks=pfKey(sym),i,x;
+  for(i=0;i<a.length;i++){if((ks&&pfKey(a[i].symbol)===ks)||(kn&&pfKey(a[i].name)===kn))return i}
+  if(kn.length>1)for(i=0;i<a.length;i++){x=pfKey(a[i].name);if(x.indexOf(kn)>-1||kn.indexOf(x)>-1)return i}
+  return -1}
+function pfBrief(a){return a.map(function(h){return {name:h.name,symbol:h.symbol||"",shares:h.shares,avg_cost:h.cost?+(+h.cost).toFixed(3):null,target:h.target||null}})}
+function pfLine(en){var a=pfGet();if(!a.length)return en?"His portfolio is empty.\n":"محفظة صاحبك فاضية الحين.\n";
+  return (en?"His portfolio now: ":"محفظة صاحبك الحين: ")+a.map(function(h){return h.name+" "+fmt(h.shares)+(en?" shares":" سهم")+(h.cost>0?(en?" at average ":" بمتوسط ")+fmt(h.cost):"")+(h.target>0?(en?" (target ":" (هدفه ")+fmt(h.target)+")":"")}).join(en?"; ":"؛ ")+".\n"}
+var toastT=null,toastUndo=null;
+function toast(text,undo){$("#toastT").textContent=text;toastUndo=undo||null;$("#toastU").hidden=!undo;$("#toast").classList.add("on");clearTimeout(toastT);toastT=setTimeout(function(){$("#toast").classList.remove("on")},8000)}
+$("#toastU").onclick=function(){if(toastUndo)toastUndo();toastUndo=null;$("#toast").classList.remove("on")};
+function pfUpdate(p){p=p||{};var a=pfGet(),prev=pfGet(),ac=String(p.action||"buy"),name=String(p.name||"").trim().slice(0,60),sym=String(p.symbol||"").trim().slice(0,12),
+    sh=Math.max(0,+p.shares||0),pr=Math.max(0,+p.price||0),tg=Math.max(0,+p.target||0),i=pfFind(a,name,sym),msg="",h;
+  if(!name&&!sym)return {ok:false,error:"name is required"};
+  if(ac==="buy"){if(sh<=0)return {ok:false,error:"shares must be above zero; ask him how many"};
+    if(i<0){a.push({name:name||sym,symbol:sym,shares:sh,cost:pr,target:0,t:Date.now()});h=a[a.length-1]}
+    else{h=a[i];var tot=h.shares+sh;h.cost=(pr>0&&h.cost>0)?(h.cost*h.shares+pr*sh)/tot:(h.cost||pr);h.shares=tot;if(sym&&!h.symbol)h.symbol=sym}
+    msg="أضفتُ: "+fmt(sh)+" سهم "+h.name+(pr?" على "+fmt(pr):"")}
+  else if(ac==="sell"){if(i<0)return {ok:false,error:"not in the portfolio",holdings:pfBrief(a)};h=a[i];
+    if(sh<=0||sh>=h.shares){a.splice(i,1);msg="بِيع كامل: "+h.name}else{h.shares-=sh;msg="بِيع: "+fmt(sh)+" سهم "+h.name}}
+  else if(ac==="remove"){if(i<0)return {ok:false,error:"not in the portfolio",holdings:pfBrief(a)};msg="حُذف: "+a[i].name;a.splice(i,1)}
+  else if(ac==="set_target"){if(i<0)return {ok:false,error:"not in the portfolio; add the holding first",holdings:pfBrief(a)};a[i].target=tg;msg=tg?"هدف "+a[i].name+": "+fmt(tg):"أُلغي هدف "+a[i].name}
+  else return {ok:false,error:"unknown action"};
+  pfSet(a);renderPf();toast(msg,function(){pfSet(prev);renderPf()});
+  return {ok:true,saved_on_device:true,holdings:pfBrief(a)}}
+function showPortfolio(p){p=p||{};var a=pfGet(),qs=Array.isArray(p.quotes)?p.quotes:[],lines=[],tc=0,tv=0,all=a.length>0,outH=[];
+  a.forEach(function(h){var q=null,i,qi;for(i=0;i<qs.length;i++){qi=qs[i]||{};if(+qi.price>0&&pfFind([h],qi.name,qi.symbol)===0){q=qi;break}}
+    tc+=(h.cost||0)*h.shares;var ln=h.name+" · "+fmt(h.shares)+" سهم",o={name:h.name,shares:h.shares,avg_cost:h.cost||null,target:h.target||null};
+    if(q){var pr=+q.price,val=pr*h.shares;tv+=val;h.last=pr;h.lastT=Date.now();o.price=pr;o.value=+val.toFixed(2);ln+=" · "+fmt(pr);
+      if(h.cost>0){var gp=(pr-h.cost)/h.cost*100;o.gain_pct=+gp.toFixed(2);ln+=" ("+(gp>=0?"▲ ":"▼ ")+fmt(Math.abs(gp))+"% عن شرائك)"}
+      if(h.target>0){o.to_target=+(h.target-pr).toFixed(2);ln+="\n   الهدف "+fmt(h.target)+(pr>=h.target?" · وصل هدفك":" · باقي "+fmt(h.target-pr))}}
+    else{all=false;if(h.cost>0)ln+=" · متوسط "+fmt(h.cost);if(h.target>0)ln+=" · الهدف "+fmt(h.target)}
+    lines.push(ln);outH.push(o)});
+  pfSet(a);renderPf();
+  var body=a.length?lines.join("\n")+"\n\n"+(all?"القيمة الآن: "+fmt(tv)+" ر.س":"تكلفة الشراء: "+fmt(tc)+" ر.س"):"محفظتك فارغة. قل: «شريت ٥٠ سهم الراجحي على ٩٤».";
+  showAction({type:"pf",tag:all?"الأسعار من البحث وقد تكون متأخرة":"للمتابعة فقط، وليست توصية",body:body});
+  return {shown:true,holdings:outH,total_cost:+tc.toFixed(2),total_value:all?+tv.toFixed(2):null,note:"Prices may be delayed. Give facts only; no buy or sell recommendation."}}
+var TRASH='<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>';
+function renderPf(){var a=pfGet(),ul=$("#pfList"),tc=0;ul.textContent="";ul.hidden=!a.length;$("#pfEmpty").hidden=!!a.length;$("#pfClearG").hidden=!a.length;
+  a.forEach(function(h,ix){tc+=(h.cost||0)*h.shares;var li=document.createElement("li"),tt=document.createElement("div"),n=document.createElement("span"),s2=document.createElement("span"),b=document.createElement("button");
+    li.className="cell pfi";tt.className="tt";n.className="n";s2.className="s";n.textContent=h.name+(h.symbol?" · "+h.symbol:"");
+    s2.textContent=fmt(h.shares)+" سهم"+(h.cost>0?" · متوسط "+fmt(h.cost):"")+(h.target>0?" · الهدف "+fmt(h.target):"")+(h.last?" · آخر سعر "+fmt(h.last):"");
+    b.type="button";b.className="del";b.setAttribute("aria-label","حذف "+h.name);b.innerHTML=TRASH;
+    b.onclick=function(){var prev=pfGet(),x=pfGet();x.splice(ix,1);pfSet(x);renderPf();toast("حُذف: "+h.name,function(){pfSet(prev);renderPf()})};
+    tt.appendChild(n);tt.appendChild(s2);li.appendChild(tt);li.appendChild(b);ul.appendChild(li)});
+  $("#pfSum").textContent=a.length?"تكلفة الشراء: "+fmt(tc)+" ر.س · عدد الشركات: "+a.length:""}
+var pfArm=0;
+$("#pfClear").onclick=function(){var b=this;if(Date.now()-pfArm<4000){var prev=pfGet();pfSet([]);renderPf();b.textContent="مسح المحفظة";pfArm=0;toast("مُسحت المحفظة",function(){pfSet(prev);renderPf()})}
+  else{pfArm=Date.now();b.textContent="اضغط مرة أخرى للتأكيد";setTimeout(function(){b.textContent="مسح المحفظة"},4000)}};
+function sendText(v){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);$("#caption").textContent=v;ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;$("#caption").textContent=v;start()}}
 
 /* ================= controls ================= */
 ["pointerdown","touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){if(ctx&&ctx.state!=="running")ctx.resume().catch(function(){})},true)});
@@ -484,15 +639,18 @@ $("#stage").onclick=function(){
   if(!live){start();return}
   if(ready&&speaking()){flush();dropTurn=true}};
 $("#actClose").onclick=closeAction;
-$("#actGo").addEventListener("click",function(){flash=1;try{if(navigator.vibrate)navigator.vibrate(18)}catch(e){}});
-$("#paneSet").addEventListener("click",function(e){var b=e.target.closest("[data-demo]");if(!b)return;var t=b.getAttribute("data-demo");closeCard();
+$("#actGo").addEventListener("click",function(e){if(act&&act.type==="pf"){e.preventDefault();closeAction();openCard("pf");return}flash=1;try{if(navigator.vibrate)navigator.vibrate(18)}catch(e){}});
+$("#paneSet").addEventListener("click",function(e){var b=e.target.closest("[data-demo]");if(!b)return;var t=b.getAttribute("data-demo");closeCard();if(t==="pf"){showPortfolio({});return}
   showAction(t==="call"?{type:"call",name:"محمد"}:t==="sms"?{type:"sms",name:"محمد",text:"سأتأخر ربع ساعة عن الموعد."}:t==="email"?{type:"email"}:{type:"meeting",title:"اجتماع المتابعة",when:"الأحد، الساعة 11 صباحًا",name:"خالد"})});
-$("#endBtn").onclick=function(){closeAction();userEnded=true;stop();$("#caption").textContent=""};
-$("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";
-  if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}
-  else{pendingText=v;start()}};
-function tab(which){var s=which==="set";$("#tabSet").setAttribute("aria-selected",String(s));$("#tabChat").setAttribute("aria-selected",String(!s));$("#paneSet").classList.toggle("on",s);$("#paneChat").classList.toggle("on",!s)}
-$("#tabChat").onclick=function(){tab("chat")};$("#tabSet").onclick=function(){tab("set")};
+$("#endBtn").onclick=$("#xBtn").onclick=function(){closeAction();userEnded=true;stop();$("#caption").textContent=""};
+$("#micBtn").onclick=function(){if(!live){start();return}if(ready&&speaking()){flush();dropTurn=true;return}
+  muted=!muted;document.body.classList.toggle("muted",muted);this.setAttribute("aria-pressed",String(muted));if(mode==="listen")$("#state").textContent=muted?"الميكروفون مغلق":LABEL.listen};
+$("#kbBtn").onclick=function(){openCard("chat");setTimeout(function(){$("#q").focus()},480)};
+$("#pfBtn").onclick=function(){openCard("pf")};$("#setBtn").onclick=function(){openCard("set")};
+$("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-say]");if(b)sendText(b.getAttribute("data-say"))});
+$("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
+function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
+$("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
 function openCard(which){if(which)tab(which);$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#saveBtn").onclick=function(){set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);if(live)stop();closeCard();if(get(K.key))start()};
@@ -511,7 +669,7 @@ document.addEventListener("visibilitychange",function(){
   if(document.hidden){if(live)stop()}
   else if(get(K.key)&&!live&&!userEnded&&!$("#card").classList.contains("open"))start()});
 
-renderLog();setMode("idle");
+renderLog();renderPf();setMode("idle");
 if(!get(K.key)){$("#state").textContent="أدخل مفتاح التفعيل للبدء";openCard("set")}
 else start();
 })();
