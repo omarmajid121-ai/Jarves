@@ -376,15 +376,21 @@ function startMic(){
   src=ctx.createMediaStreamSource(mic);proc=ctx.createScriptProcessor(4096,1,1);mute=ctx.createGain();mute.gain.value=0;
   src.connect(anIn);src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);
   proc.onaudioprocess=function(e){
-    if(!ws||ws.readyState!==1||!ready||speaking())return;
-    ws.send(JSON.stringify({realtimeInput:{audio:{data:toPcm16k(e.inputBuffer.getChannelData(0),ctx.sampleRate),mimeType:"audio/pcm;rate=16000"}}}))}}
+    if(!ws||ws.readyState!==1||!ready)return;
+    var f=e.inputBuffer.getChannelData(0);
+    if(speaking()&&!dropTurn){var q=0;for(var i=0;i<f.length;i+=4)q+=f[i]*f[i];var r=Math.sqrt(q/(f.length/4));
+      if(r>Math.max(0.045,floor*3)){if(++hot>=2){flush();dropTurn=true;hot=0;clearTimeout(bargeT);bargeT=setTimeout(function(){dropTurn=false},2500);setMode("listen")}}
+      else{hot=0;floor=floor*0.9+r*0.1}}else{hot=0}
+    ws.send(JSON.stringify({realtimeInput:{audio:{data:toPcm16k(f,ctx.sampleRate),mimeType:"audio/pcm;rate=16000"}}}))}}
+var hot=0,floor=0.01,bargeT=null;
 
 /* ================= session ================= */
 function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
     systemInstruction:{parts:[{text:prompt()}]}};
-  if(attempt<2){s.inputAudioTranscription={};s.outputAudioTranscription={}}
+  if(attempt<2){s.inputAudioTranscription={};s.outputAudioTranscription={};
+    s.realtimeInputConfig={automaticActivityDetection:{startOfSpeechSensitivity:"START_SENSITIVITY_HIGH",prefixPaddingMs:40,silenceDurationMs:600},activityHandling:"START_OF_ACTIVITY_INTERRUPTS"}}
   if(attempt===0)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an animated on-screen card for a call, a text message (SMS), the email inbox, or a meeting.",
     parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["call","sms","email","meeting"]},name:{type:"STRING",description:"Person or contact name"},
       number:{type:"STRING",description:"Phone number with digits only, if the user said one"},text:{type:"STRING",description:"SMS body"},
@@ -416,7 +422,7 @@ function handle(m){
   if(m.toolCall&&m.toolCall.functionCalls){var out=m.toolCall.functionCalls.map(function(fc){var r;try{r=showAction(fc.args||{})}catch(e){r={shown:false}}return {id:fc.id,name:fc.name,response:r}});
     ws.send(JSON.stringify({toolResponse:{functionResponses:out}}));return}
   var sc=m.serverContent;if(!sc)return;
-  if(sc.interrupted)flush();
+  if(sc.interrupted){flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
   if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#caption").textContent=curMe.textContent;$("#msgs").scrollTop=1e7}
   if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#caption").textContent=curAi.textContent.slice(-140);$("#msgs").scrollTop=1e7}
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn){sc.modelTurn.parts.forEach(function(p){
