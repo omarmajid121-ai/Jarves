@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مساعد">
+<meta name="theme-color" content="#04070e">
+<title>مساعد</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --night:#04070e; --deep:#0a1322; --glass:rgba(255,255,255,.07); --glass-strong:rgba(255,255,255,.12);
+  --edge:rgba(255,255,255,.16); --ink:#eef4ff; --soft:#a3b3cb; --ice:#62cbff; --amber:#ffb65a; --mint:#62e2ab; --rose:#ff7d8c;
+  --font:-apple-system,"SF Arabic","SF Pro Text","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 70% at 50% -10%,#12305a 0%,var(--deep) 42%,var(--night) 100%) fixed var(--night);
+  color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+.app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;
+  padding:env(safe-area-inset-top) max(16px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(16px,env(safe-area-inset-left))}
+.glass{background:var(--glass);border:1px solid var(--edge);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 30px rgba(0,0,0,.35)}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 4px}
+header h1{margin:0;font-size:22px;font-weight:700}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--soft)}
+.dot.live{background:var(--mint);box-shadow:0 0 10px var(--mint)}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;padding:0}
+.stage{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 4px}
+#orbBtn{width:210px;height:210px;border-radius:50%;border:0;background:transparent;padding:0;display:grid;place-items:center}
+#orb{width:210px;height:210px}
+#stateText{font-size:17px;font-weight:600;min-height:26px;text-align:center}
+#subText{font-size:13px;color:var(--soft);min-height:20px;text-align:center;margin:0}
+.msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;padding:8px 0}
+.msg{max-width:86%;padding:10px 14px;border-radius:20px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:linear-gradient(180deg,#2c8fd0,#1f6fb0);border-end-end-radius:6px}
+.msg.ai{align-self:flex-start;border-end-start-radius:6px}
+.msg.note{align-self:center;max-width:100%;font-size:13px;color:var(--amber);padding:2px 8px;text-align:center}
+.bar{display:flex;align-items:center;gap:8px;padding:6px;border-radius:28px;margin:6px 0 10px}
+.bar input{flex:1;min-width:0;height:44px;border:0;background:transparent;padding:0 12px;outline:none;font-size:16px}
+.bar input::placeholder{color:var(--soft)}
+.send{background:var(--ice);color:#04121f;border:0}
+.endbtn{background:var(--rose);color:#fff;border:0}
+.sheet{position:fixed;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;background:rgba(2,5,10,.6)}
+.sheet.on{display:flex}
+.panel{width:100%;max-width:520px;border-radius:28px 28px 0 0;padding:20px 20px calc(env(safe-area-inset-bottom) + 20px);display:flex;flex-direction:column;gap:14px;background:rgba(14,24,42,.92);max-height:92%;overflow-y:auto}
+.panel h2{margin:0;font-size:20px}
+.panel ol{margin:0;padding-inline-start:20px;color:var(--soft);font-size:14px;display:flex;flex-direction:column;gap:4px}
+.panel a{color:var(--ice)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--soft)}
+.field input,.field select{height:48px;border-radius:14px;border:1px solid var(--edge);background:rgba(0,0,0,.3);padding:0 14px;font-size:16px;direction:ltr;text-align:start}
+.field input[dir="rtl"],.field select{direction:rtl}
+.primary{min-height:50px;border-radius:25px;border:0;background:var(--ice);color:#04121f;font-weight:700}
+.ghost{min-height:46px;border-radius:23px;background:transparent;border:1px solid var(--edge)}
+.small{font-size:12px;color:var(--soft);margin:0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>مساعد</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">غير متصل</span></div>
+    </div>
+    <button class="iconbtn glass" id="setBtn" aria-label="الإعدادات">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+    </button>
+  </header>
+
+  <div class="stage">
+    <button id="orbBtn" aria-label="ابدأ المحادثة"><canvas id="orb" width="420" height="420" aria-hidden="true"></canvas></button>
+    <div id="stateText">اضغط الدائرة وابدأ الكلام</div>
+    <p id="subText">تتكلم معك باللهجة السعودية وترد عليك بصوتها</p>
+  </div>
+
+  <div class="msgs" id="msgs" aria-live="polite"></div>
+
+  <form class="bar glass" id="form">
+    <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">اكتب رسالتك</label>
+    <input id="q" type="text" autocomplete="off" enterkeyhint="send" placeholder="أو اكتب هنا">
+    <button class="iconbtn send" aria-label="إرسال">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+    </button>
+    <button type="button" class="iconbtn endbtn" id="endBtn" aria-label="إنهاء المحادثة" hidden>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+  </form>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
+  <div class="panel glass">
+    <h2>تجهيز مساعد</h2>
+    <ol>
+      <li>افتح <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> وسجّل دخول بحساب قوقل.</li>
+      <li>اضغط Create API key وانسخ المفتاح.</li>
+      <li>الصقه هنا واضغط حفظ.</li>
+    </ol>
+    <div class="field"><label for="keyIn">مفتاح Gemini</label><input id="keyIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza..."></div>
+    <div class="field"><label for="nameIn">اسمك</label><input id="nameIn" dir="rtl" type="text" autocomplete="off" placeholder="مثلاً: عمر"></div>
+    <div class="field"><label for="voiceIn">الصوت (كلها أصوات نسائية)</label>
+      <select id="voiceIn">
+        <option value="Kore">Kore · واثق</option>
+        <option value="Aoede">Aoede · خفيف</option>
+        <option value="Leda">Leda · شبابي</option>
+        <option value="Zephyr">Zephyr · مشرق</option>
+        <option value="Sulafat">Sulafat · دافي</option>
+        <option value="Achernar">Achernar · ناعم</option>
+      </select>
+    </div>
+    <p class="small">المفتاح ينحفظ في هذا الجوال فقط، وما ينرفع لأي مكان غير قوقل وقت المحادثة.</p>
+    <button class="primary" id="saveBtn">حفظ</button>
+    <button class="ghost" id="clearBtn">مسح سجل المحادثة</button>
+    <button class="ghost" id="closeBtn">إغلاق</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+var MODEL="gemini-3.1-flash-live-preview";
+var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
+var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log"};
+function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
+function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null;
+var live=false,ready=false,attempt=0,nextT=0,playing=[],dropTurn=false,pendingText="",mode="idle";
+var log=[],curMe=null,curAi=null;
+try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
+
+/* ---------- orb ---------- */
+var cv=$("#orb"),cx=cv.getContext("2d"),t0=performance.now(),still=window.matchMedia("(prefers-reduced-motion:reduce)").matches,level=0;
+function draw(now){
+  var t=(now-t0)/1000,w=cv.width,c=w/2;
+  var sp={idle:.3,connect:2.4,listen:.8,speak:1.3}[mode]||.3;
+  var col={idle:"98,203,255",connect:"255,182,90",listen:"98,203,255",speak:"98,226,171"}[mode];
+  cx.clearRect(0,0,w,w);
+  var beat=mode==="speak"?Math.sin(t*8)*.07:mode==="listen"?Math.min(level*1.6,.16):Math.sin(t*1.6)*.025;
+  var R=c*.5*(1+beat);
+  var g=cx.createRadialGradient(c,c,4,c,c,R);g.addColorStop(0,"rgba("+col+",.95)");g.addColorStop(.4,"rgba("+col+",.32)");g.addColorStop(1,"rgba("+col+",0)");
+  cx.fillStyle=g;cx.beginPath();cx.arc(c,c,R,0,7);cx.fill();
+  cx.lineCap="round";
+  for(var i=0;i<4;i++){var r=c*(.46+i*.12),a=t*sp*(i%2?-1:1)*(1+i*.2)+i;
+    cx.strokeStyle="rgba("+col+","+(.75-i*.15)+")";cx.lineWidth=i===0?7:4;
+    cx.beginPath();cx.arc(c,c,r,a,a+1.9-i*.3);cx.stroke();
+    cx.beginPath();cx.arc(c,c,r,a+3.3,a+3.9+i*.2);cx.stroke()}
+  if(live&&ready){var sp2=speaking();if(sp2&&mode!=="speak")setMode("speak");else if(!sp2&&mode==="speak")setMode("listen")}
+  if(!still)requestAnimationFrame(draw)}
+requestAnimationFrame(draw);
+if(still)setInterval(function(){draw(performance.now())},500);
+function setMode(m){mode=m;
+  $("#stateText").textContent={idle:"اضغط الدائرة وابدأ الكلام",connect:"لحظة، أجهّز…",listen:"أسمعك، تكلّم",speak:"أتكلم… اضغط الدائرة لو تبي تقاطعني"}[m];
+  $("#statusText").textContent=m==="idle"?"غير متصل":m==="connect"?"يتصل":"متصل";
+  $("#dot").classList.toggle("live",m==="listen"||m==="speak");
+  $("#endBtn").hidden=m==="idle";
+  $("#orbBtn").setAttribute("aria-label",m==="idle"?"ابدأ المحادثة":m==="speak"?"قاطع الكلام":"المحادثة شغالة")}
+
+/* ---------- transcript ---------- */
+function bubble(cls,text){var d=document.createElement("div");d.className="msg "+cls+(cls==="ai"?" glass":"");d.textContent=text;$("#msgs").appendChild(d);$("#msgs").scrollTop=1e7;return d}
+function note(t){bubble("note",t)}
+function renderLog(){$("#msgs").textContent="";log.slice(-12).forEach(function(l){bubble(l.r==="u"?"me":"ai",l.t)})}
+function pushLog(r,t){t=(t||"").trim();if(!t)return;log.push({r:r,t:t.slice(0,600)});log=log.slice(-40);set(K.log,JSON.stringify(log))}
+function endTurn(){if(curMe){pushLog("u",curMe.textContent);curMe=null}if(curAi){pushLog("a",curAi.textContent);curAi=null}}
+
+/* ---------- prompt ---------- */
+function nowText(){try{return new Date().toLocaleString("ar-SA-u-ca-gregory-nu-latn",{timeZone:"Asia/Riyadh",weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+function prompt(){
+  var name=get(K.name).trim();
+  var past=log.slice(-14).map(function(l){return (l.r==="u"?"هو: ":"أنتِ: ")+l.t}).join("\n");
+  return "أنتِ «مساعد»، مساعدة شخصية سعودية بصوت نسائي. تتكلمين دائماً باللهجة السعودية الدارجة (نجدية بيضاء) بشكل طبيعي ودافي، مثل صديقة ذكية يُعتمد عليها، وبصيغة المؤنث عن نفسك.\n"+
+  "ردودك قصيرة وواضحة، من جملة إلى ثلاث، إلا إذا طلب تفصيل. تجاوبين على أي سؤال، تناقشين وتعطين رأيك، وتكملين المحادثات الطويلة بسلاسة وتتذكرين اللي انقال فيها.\n"+
+  "هذي النسخة محادثة فقط: ما تقدرين تتصلين ولا ترسلين رسائل ولا تدخلين على الإيميل أو التقويم. إذا طلب شي من هذا قولي له بصراحة إنه ما اشتغل للحين. وإذا ما تعرفين معلومة قوليها بدون اختراع.\n"+
+  (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
+  "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+
+  (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
+
+/* ---------- audio helpers ---------- */
+function speaking(){return ctx&&ctx.currentTime<nextT+0.25}
+function flush(){playing.forEach(function(s){try{s.stop()}catch(e){}});playing=[];nextT=0}
+function playChunk(b64,rate){
+  var bin=atob(b64),n=bin.length>>1;if(!n)return;
+  var buf=ctx.createBuffer(1,n,rate||24000),ch=buf.getChannelData(0);
+  for(var i=0;i<n;i++){var v=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8);if(v>=32768)v-=65536;ch[i]=v/32768}
+  var s=ctx.createBufferSource();s.buffer=buf;s.connect(ctx.destination);
+  var t=Math.max(ctx.currentTime+0.03,nextT);s.start(t);nextT=t+buf.duration;playing.push(s);
+  s.onended=function(){var i=playing.indexOf(s);if(i>-1)playing.splice(i,1)}}
+function toPcm16k(f,sr){
+  var ratio=sr/16000,n=Math.floor(f.length/ratio),out=new Uint8Array(n*2),peak=0;
+  for(var i=0;i<n;i++){var a=Math.floor(i*ratio),b=Math.max(a+1,Math.floor((i+1)*ratio)),sum=0;
+    for(var j=a;j<b&&j<f.length;j++)sum+=f[j];
+    var v=Math.max(-1,Math.min(1,sum/(b-a)));if(Math.abs(v)>peak)peak=Math.abs(v);
+    var s=v<0?v*32768:v*32767;s|=0;out[2*i]=s&255;out[2*i+1]=(s>>8)&255}
+  level=level*.7+peak*.3;
+  var str="";for(var k=0;k<out.length;k+=8192)str+=String.fromCharCode.apply(null,out.subarray(k,k+8192));
+  return btoa(str)}
+function startMic(){
+  src=ctx.createMediaStreamSource(mic);proc=ctx.createScriptProcessor(4096,1,1);mute=ctx.createGain();mute.gain.value=0;
+  src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);
+  proc.onaudioprocess=function(e){
+    if(!ws||ws.readyState!==1||!ready)return;
+    if(speaking()){level=0;return}
+    var data=toPcm16k(e.inputBuffer.getChannelData(0),ctx.sampleRate);
+    ws.send(JSON.stringify({realtimeInput:{audio:{data:data,mimeType:"audio/pcm;rate=16000"}}}))}}
+
+/* ---------- session ---------- */
+function setupMsg(){
+  var s={model:"models/"+MODEL,
+    generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:get(K.voice)||"Kore"}}}},
+    systemInstruction:{parts:[{text:prompt()}]}};
+  if(attempt===0){s.inputAudioTranscription={};s.outputAudioTranscription={}}
+  return {setup:s}}
+function connect(){
+  ready=false;
+  ws=new WebSocket(WS+encodeURIComponent(get(K.key)));ws.binaryType="arraybuffer";
+  ws.onopen=function(){ws.send(JSON.stringify(setupMsg()))};
+  ws.onmessage=function(ev){var d=ev.data;
+    if(typeof d!=="string"){try{d=new TextDecoder().decode(d)}catch(e){return}}
+    var m;try{m=JSON.parse(d)}catch(e){return}handle(m)};
+  ws.onerror=function(){};
+  ws.onclose=function(ev){
+    if(!live)return;
+    if(!ready&&attempt===0&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt=1;connect();return}
+    var why=ev.reason||"",wasReady=ready;
+    stop();
+    if(/API key|key not valid|permission|unauth/i.test(why))note("المفتاح غير صحيح. افتح الإعدادات والصق مفتاح جديد.");
+    else if(/quota|exhaust|rate/i.test(why))note("خلص الحد المجاني حالياً. جرّب بعد شوي.");
+    else if(wasReady)note("انتهت الجلسة. اضغط الدائرة وكمّل.");
+    else note("ما قدرت أتصل. "+(why?"السبب: "+why:"تأكد من الإنترنت والمفتاح."))}}
+function handle(m){
+  if(m.setupComplete){ready=true;startMic();setMode("listen");
+    var first=pendingText||"(بداية الجلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج.";
+    if(pendingText){curMe=bubble("me",pendingText);pendingText=""}
+    ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
+  var sc=m.serverContent;if(!sc)return;
+  if(sc.interrupted){flush()}
+  if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe)curMe=bubble("me","");curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi)curAi=bubble("ai","");curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn){sc.modelTurn.parts.forEach(function(p){
+    if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
+  if(sc.turnComplete){dropTurn=false;endTurn()}}
+function start(){
+  if(live)return;
+  if(!get(K.key)){openSheet();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح ما يدعم المايكروفون. افتح الصفحة في Safari.");return}
+  live=true;attempt=0;setMode("connect");
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("الصوت ما اشتغل في هذا المتصفح.");return}
+  ctx.resume();
+  try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}}).then(function(s){
+    if(!live){s.getTracks().forEach(function(t){t.stop()});return}
+    mic=s;connect();
+    try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(function(w){wake=w},function(){})}catch(e){}
+  },function(){live=false;setMode("idle");note("لازم تسمح بالمايكروفون عشان أسمعك. من إعدادات Safari اسمح للموقع بالمايكروفون.")})}
+function stop(){
+  live=false;ready=false;endTurn();flush();dropTurn=false;
+  try{if(ws){ws.onclose=null;ws.close()}}catch(e){}ws=null;
+  try{if(proc){proc.onaudioprocess=null;proc.disconnect()}if(src)src.disconnect();if(mute)mute.disconnect()}catch(e){}proc=src=mute=null;
+  try{if(mic)mic.getTracks().forEach(function(t){t.stop()})}catch(e){}mic=null;
+  try{if(wake)wake.release()}catch(e){}wake=null;
+  level=0;setMode("idle")}
+
+/* ---------- controls ---------- */
+$("#orbBtn").onclick=function(){
+  if(!live){start();return}
+  if(ready&&speaking()){flush();dropTurn=true}};
+$("#endBtn").onclick=stop;
+$("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";
+  if(live&&ready){if(speaking()){flush();dropTurn=false}endTurn();curMe=bubble("me",v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}
+  else{pendingText=v;start()}};
+function openSheet(){$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#sheet").classList.add("on")}
+function closeSheet(){$("#sheet").classList.remove("on")}
+$("#setBtn").onclick=openSheet;$("#closeBtn").onclick=closeSheet;
+$("#saveBtn").onclick=function(){set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);closeSheet();if(live)stop();
+  $("#subText").textContent=get(K.key)?"جاهزة. اضغط الدائرة وتكلّم":"الصق المفتاح من الإعدادات أول"};
+$("#clearBtn").onclick=function(){log=[];set(K.log,"[]");renderLog();closeSheet()};
+document.addEventListener("visibilitychange",function(){if(document.hidden&&live)stop()});
+
+renderLog();setMode("idle");
+if(!get(K.key)){$("#subText").textContent="أول مرة: افتح الإعدادات والصق المفتاح";openSheet()}
+})();
+</script>
+</body>
+</html>
