@@ -158,7 +158,35 @@ body[data-act=call] #actGo{background:#30D158;color:#00210C}
 .pfi .n{font-size:17px;line-height:22px}
 .pfi .s{font-size:13px;line-height:18px;color:var(--label2)}
 .pfi .del{width:44px;height:44px;border:0;background:transparent;color:var(--red);display:grid;place-items:center;padding:0;flex:none}
-@media (prefers-reduced-motion:reduce){#amb i,.live i,#edge{animation:none!important}}
+#brief{position:fixed;inset:0;z-index:8;background:#000;display:flex;flex-direction:column;gap:0;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 22px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateY(100%);visibility:hidden;transition:transform .5s var(--spring),visibility 0s .5s}
+#brief.on{transform:none;visibility:visible;transition:transform .5s var(--spring)}
+#brief::before,#brief::after{content:"";position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none}
+#brief::before{width:360px;height:360px;left:-120px;top:8%;background:#A28BFF;opacity:.36}
+#brief::after{width:320px;height:320px;right:-140px;top:44%;background:#FFB86B;opacity:.26}
+#brief>*{position:relative;z-index:1;flex:none}
+.bh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#bDate{font-size:15px;color:var(--t2)}
+#bHello{margin:14px 4px 0;font-size:34px;line-height:41px;font-weight:700}
+#bSum{margin:6px 4px 0;font-size:17px;line-height:25px;color:var(--t2);text-wrap:pretty;min-height:25px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
+.tile{border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:6px;min-height:122px;text-align:start;color:#fff;font:inherit;transition:transform .32s var(--spring)}
+button.tile:active{transform:scale(.97)}
+.tile.w{grid-column:span 2;min-height:0}
+.tl{display:flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600}
+.tv{font-size:32px;line-height:38px;font-weight:600;font-variant-numeric:tabular-nums}
+.tv small{font-size:15px;font-weight:500;color:var(--t2)}
+.ts{font-size:13px;line-height:18px;color:var(--t2)}
+.pr5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;text-align:center}
+.pr5 div{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--t2);padding:6px 0;border-radius:14px}
+.pr5 b{font-size:15px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
+.pr5 .nx{background:rgba(255,255,255,.12)}
+.sk{display:block;height:30px;width:60%;border-radius:10px;background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.22),rgba(255,255,255,.08));background-size:200% 100%;animation:shim 1.4s linear infinite}
+#bPlay{margin-top:16px;height:60px;border-radius:30px;color:#fff;display:flex;align-items:center;gap:12px;padding:0 20px 0 8px;font-size:17px;font-weight:600;transition:transform .32s var(--spring)}
+#bPlay:active{transform:scale(.97)}
+#bPlay i{width:44px;height:44px;border-radius:22px;background:#fff;color:#000;display:grid;place-items:center;flex:none}
+#bPlay span{flex:1;text-align:start}
+@media (prefers-reduced-motion:reduce){#amb i,.live i,#edge,.sk{animation:none!important}}
 </style>
 </head>
 <body data-mode="idle">
@@ -172,7 +200,7 @@ body[data-act=call] #actGo{background:#30D158;color:#00210C}
 </header>
 <div id="caption" aria-live="polite"></div>
 <div id="chips">
-  <button class="chip gl" data-say="عطيني ملخص يومي">ملخص اليوم</button>
+  <button class="chip gl" id="briefChip">ملخص اليوم</button>
   <button class="chip gl" data-say="كيف محفظتي؟">كيف محفظتي؟</button>
   <button class="chip gl" data-say="وش الطقس الحين؟">الطقس الآن</button>
 </div>
@@ -182,6 +210,14 @@ body[data-act=call] #actGo{background:#30D158;color:#00210C}
   <button id="xBtn" aria-label="إنهاء المحادثة"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
 </nav>
 <div id="toast" class="gl" role="status"><span class="ok" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span id="toastT"></span><button id="toastU" type="button">تراجع</button></div>
+
+<section id="brief" aria-label="ملخص اليوم">
+  <div class="bh"><button class="gb gl" id="briefClose" aria-label="رجوع"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button><span id="bDate"></span><button class="gb gl" id="briefRe" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6"></path></svg></button></div>
+  <h1 id="bHello"></h1>
+  <p id="bSum" aria-live="polite"></p>
+  <div class="tiles" id="tiles"></div>
+  <button id="bPlay" class="gl" type="button"><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4.5l13 7.5-13 7.5z" fill="currentColor"></path></svg></i><span>اسمع الملخص</span></button>
+</section>
 
 <div id="act" role="status" aria-live="polite">
   <div class="arow"><span class="ic" id="actIc"></span><div class="tt"><div id="actTitle"></div><div id="actTag"></div></div></div>
@@ -453,6 +489,7 @@ function promptEn(){
   (name?"The user's name is "+name+".\n":"")+
   "Current time in Riyadh: "+nowText()+".\n"+locLine(true)+
   "For anything current (weather, news, prices, prayer times, opening hours, places) use Google search when available, and be accurate. If you need his location and it is not given above, call get_location.\n"+
+  "When he asks for his daily brief, the weather or prayer times, call show_brief and use only the data it returns.\n"+
   "Portfolio: when he says he bought or sold shares, or sets a price target, call portfolio_update at once and confirm in one sentence. When he asks about his portfolio or a stock he holds, search Google for the latest price, then call show_portfolio with the quotes you found, and tell him the price, his gain or loss against his cost, and the distance to his target. Say prices may be delayed. Never recommend buying, selling or holding and never predict prices; if he asks whether to buy or sell, say the decision is his and give facts only. Use the same stock name already in the portfolio.\n"+pfLine(true)+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
@@ -465,6 +502,7 @@ function prompt(){
   (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
   "الوقت الآن بتوقيت الرياض: "+nowText()+".\n"+locLine(false)+
   "أي معلومة حالية (طقس، أخبار، أسعار، مواقيت صلاة، أوقات دوام، أماكن) ابحثي عنها في قوقل إذا متاح، وكوني دقيقة. وإذا احتجتي موقعه وما هو مذكور فوق، استخدمي get_location.\n"+
+  "إذا طلب ملخص يومه أو الطقس أو مواقيت الصلاة، استخدمي show_brief وخذي منها المعلومات الدقيقة وقوليها باختصار.\n"+
   "المحفظة: إذا قال إنه شرى أو باع أسهم أو حدد هدف سعر، استخدمي portfolio_update على طول وأكدي له بجملة. وإذا سأل عن محفظته أو عن سهم عنده، ابحثي في قوقل عن آخر سعر، ثم استخدمي show_portfolio ومرري الأسعار اللي لقيتيها، وقولي له السعر وربحه أو خسارته عن سعر شرائه وكم باقي على هدفه. نبهيه إن الأسعار ممكن تكون متأخرة. ممنوع تعطين توصية شراء أو بيع أو تتوقعين سعر؛ وإذا سألك «أبيع ولا أشتري؟» قولي إن القرار له وأعطيه الحقائق بس. استخدمي نفس اسم السهم الموجود في المحفظة.\n"+pfLine(false)+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
@@ -513,6 +551,7 @@ function setupMsg(){
       number:{type:"STRING",description:"Phone number with digits only, if the user said one"},text:{type:"STRING",description:"SMS body"},
       title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}},
     {name:"get_location",description:"Get the user's current city and coordinates. Call it only when the answer needs his location: weather, prayer times, nearby places, directions, local time elsewhere. The phone asks his permission the first time."},
+    {name:"show_brief",description:"Open the user's Today screen (weather, prayer times, portfolio cards) and get the exact data back. Call it when he asks for his daily brief, the weather, or prayer times, then say it briefly."},
     {name:"portfolio_update",description:"Save a change to the user's stock portfolio on this device. Call it whenever he says he bought or sold shares, wants a holding removed, or sets a price target.",
       parameters:{type:"OBJECT",properties:{action:{type:"STRING",enum:["buy","sell","remove","set_target"]},name:{type:"STRING",description:"Company or stock name; reuse the name already in the portfolio"},
         symbol:{type:"STRING",description:"Ticker or Tadawul code, if known"},shares:{type:"NUMBER"},price:{type:"NUMBER",description:"Price per share he paid or got"},target:{type:"NUMBER",description:"His target price, for set_target"}},required:["action","name"]}},
@@ -546,7 +585,8 @@ function handle(m){
   if(m.toolCall&&m.toolCall.functionCalls){var fcs=m.toolCall.functionCalls,pend=fcs.length,out=[];
     var done=function(){if(--pend===0&&ws&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:out}}))};
     fcs.forEach(function(fc,ix){
-      if(fc.name==="get_location"){$("#state").textContent="أحدد موقعك…";getLoc(function(){var o=locObj();
+      if(fc.name==="show_brief"){openBrief(function(d){out[ix]={id:fc.id,name:fc.name,response:d};done()})}
+      else if(fc.name==="get_location"){$("#state").textContent="أحدد موقعك…";getLoc(function(){var o=locObj();
         out[ix]={id:fc.id,name:fc.name,response:o?{city:o.city||"",region:o.region||"",country:o.country||"",latitude:+o.lat.toFixed(3),longitude:+o.lon.toFixed(3)}:{available:false,reason:"Location permission was not given or is unavailable. Ask him for his city instead."}};done()})}
       else{var r;try{r=fc.name==="portfolio_update"?pfUpdate(fc.args||{}):fc.name==="show_portfolio"?showPortfolio(fc.args||{}):showAction(fc.args||{})}catch(e){r={ok:false,shown:false}}out[ix]={id:fc.id,name:fc.name,response:r};done()}});return}
   var sc=m.serverContent;if(!sc)return;
@@ -630,7 +670,71 @@ function renderPf(){var a=pfGet(),ul=$("#pfList"),tc=0;ul.textContent="";ul.hidd
 var pfArm=0;
 $("#pfClear").onclick=function(){var b=this;if(Date.now()-pfArm<4000){var prev=pfGet();pfSet([]);renderPf();b.textContent="مسح المحفظة";pfArm=0;toast("مُسحت المحفظة",function(){pfSet(prev);renderPf()})}
   else{pfArm=Date.now();b.textContent="اضغط مرة أخرى للتأكيد";setTimeout(function(){b.textContent="مسح المحفظة"},4000)}};
-function sendText(v){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;start()}}
+function sendText(v,shown){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",shown||v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;start()}}
+
+/* ================= today ================= */
+var BR={w:null,p:null,t:0,busy:false,cbs:[]};
+var WX=[[0,"صافٍ","clear"],[2,"غائم جزئيًا","partly cloudy"],[3,"غائم","cloudy"],[48,"ضباب","fog"],[57,"رذاذ","drizzle"],[67,"مطر","rain"],[77,"ثلج","snow"],[82,"زخات مطر","showers"],[86,"زخات ثلج","snow showers"],[99,"عواصف رعدية","thunderstorms"]];
+function wx(c,en){for(var i=0;i<WX.length;i++)if(c<=WX[i][0])return WX[i][en?2:1];return en?"unknown":"غير معروف"}
+var PRN=[["Fajr","الفجر"],["Dhuhr","الظهر"],["Asr","العصر"],["Maghrib","المغرب"],["Isha","العشاء"]];
+function hm(x){var m=/(\d{1,2}):(\d{2})/.exec(x||"");return m?(+m[1])*60+(+m[2]):-1}
+function t12(mins){var h=Math.floor(mins/60),m=mins%60,pm=h>=12;h=h%12||12;return h+":"+(m<10?"0":"")+m+(pm?" م":" ص")}
+function left(m){var h=Math.floor(m/60),r=m%60;return "بعد "+(h?h+" س ":"")+r+" د"}
+function nextPrayer(){if(!BR.p)return null;var d=new Date(),now=d.getHours()*60+d.getMinutes(),i,t;
+  for(i=0;i<PRN.length;i++){t=hm(BR.p[PRN[i][0]]);if(t>now)return {i:i,en:PRN[i][0],name:PRN[i][1],mins:t,left:t-now}}
+  t=hm(BR.p.Fajr);return t<0?null:{i:0,en:"Fajr",name:"الفجر",mins:t,left:t+1440-now,tomorrow:true}}
+function briefData(){var o=locObj(),np=nextPrayer(),d={city:o?(o.city||o.region||""):"",email_and_calendar:"not connected yet",portfolio:pfBrief(pfGet())};
+  if(!o)d.location="not allowed; ask him for his city or to allow location";
+  if(BR.w)d.weather={temperature_c:BR.w.t,description:wx(BR.w.c,true),high_c:BR.w.hi,low_c:BR.w.lo};
+  if(BR.p){d.prayer_times={};PRN.forEach(function(x){d.prayer_times[x[0]]=BR.p[x[0]]});if(np)d.next_prayer={name:np.en,time:BR.p[np.en],minutes_left:np.left}}
+  return d}
+var SV='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">';
+var TI={sun:SV+'<circle cx="12" cy="12" r="4.5"></circle><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"></path></svg>',
+  moon:SV+'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"></path></svg>',
+  chart:SV+'<path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L19 8"></path></svg>',
+  mail:SV+'<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg>'};
+function tile(icon,col,label,wide,btn){var e=document.createElement(btn?"button":"div"),l=document.createElement("div"),sp=document.createElement("span");
+  e.className="tile gl"+(wide?" w":"");if(btn)e.type="button";l.className="tl";l.style.color=col;l.innerHTML=TI[icon];sp.textContent=label;l.appendChild(sp);e.appendChild(l);return e}
+function line(e,cls,text){var d=document.createElement("div");d.className=cls;d.textContent=text;e.appendChild(d);return d}
+function renderBrief(){var o=locObj(),np=nextPrayer(),T=$("#tiles"),e,v,a,tc=0,tv=0,all,d=new Date(),name=get(K.name).trim(),sum=[];
+  $("#bDate").textContent=d.toLocaleDateString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long"})+(o&&o.city?" · "+o.city:"");
+  $("#bHello").textContent=(d.getHours()<12?"صباح الخير":"مساء الخير")+(name?"، "+name:"");
+  T.textContent="";
+  e=tile("sun","#FFC56B",o&&o.city?o.city:"الطقس",false,!o);
+  if(!o){line(e,"tv","—");line(e,"ts","اسمح بالموقع لعرض الطقس ومواقيت الصلاة");e.onclick=function(){BR.t=0;getLoc(function(){loadBrief()},true)}}
+  else if(BR.w){line(e,"tv",Math.round(BR.w.t)+"°");line(e,"ts",wx(BR.w.c)+" · العظمى "+Math.round(BR.w.hi)+"° · الصغرى "+Math.round(BR.w.lo)+"°");sum.push("الطقس "+wx(BR.w.c)+" و"+Math.round(BR.w.t)+"°")}
+  else if(BR.busy){v=document.createElement("i");v.className="sk";e.appendChild(v)}
+  else{line(e,"tv","—");line(e,"ts","تعذّر تحميل الطقس")}
+  T.appendChild(e);
+  e=tile("moon","#8FE3B0",np?np.name+(np.tomorrow?" · غدًا":""):"الصلاة القادمة",false,false);
+  if(np){line(e,"tv",t12(np.mins));line(e,"ts",left(np.left));sum.push(np.name+" "+left(np.left))}
+  else if(BR.busy&&o){v=document.createElement("i");v.className="sk";e.appendChild(v)}
+  else{line(e,"tv","—");line(e,"ts",o?"تعذّر تحميل المواقيت":"تحتاج الموقع")}
+  T.appendChild(e);
+  if(BR.p){e=tile("moon","#8FE3B0","مواقيت اليوم",true,false);v=document.createElement("div");v.className="pr5";
+    PRN.forEach(function(x,i){var c=document.createElement("div"),b=document.createElement("b");if(np&&np.i===i)c.className="nx";c.textContent=x[1];b.textContent=t12(hm(BR.p[x[0]])).replace(/ [صم]$/,"");c.appendChild(b);v.appendChild(c)});
+    e.appendChild(v);T.appendChild(e)}
+  a=pfGet();all=a.length>0;a.forEach(function(h){tc+=(h.cost||0)*h.shares;if(h.last)tv+=h.last*h.shares;else all=false});
+  e=tile("chart","#30D158","محفظتك",false,true);
+  if(a.length){line(e,"tv",fmt(Math.round(all?tv:tc)));line(e,"ts","ر.س · "+(all?"بآخر سعر":"تكلفة الشراء")+" · "+a.length+" شركات")}
+  else{line(e,"tv","—");line(e,"ts","قل: «شريت ٥٠ سهم الراجحي على ٩٤»")}
+  e.onclick=function(){closeBrief();openCard("pf")};T.appendChild(e);
+  e=tile("mail","#BFA6FF","البريد والتقويم",false,false);line(e,"tv","—");line(e,"ts","غير مربوطين بعد. سيظهر هنا اجتماعك التالي والرسائل التي تنتظر ردك.");T.appendChild(e);
+  $("#bSum").textContent=sum.length?sum.join("، و")+".":(BR.busy?"جارٍ التحميل…":"")}
+function loadBrief(cb){if(cb)BR.cbs.push(cb);var fin=function(){BR.busy=false;renderBrief();var c=BR.cbs;BR.cbs=[];c.forEach(function(f){f(briefData())})};
+  if(BR.busy)return;if(BR.w&&BR.p&&Date.now()-BR.t<600000){fin();return}
+  BR.busy=true;renderBrief();
+  getLoc(function(){var o=locObj();if(!o){fin();return}
+    var q="latitude="+o.lat.toFixed(3)+"&longitude="+o.lon.toFixed(3),d=new Date(),dd=("0"+d.getDate()).slice(-2)+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+d.getFullYear(),n=2,one=function(){if(--n===0){BR.t=Date.now();fin()}};
+    fetch("https://api.open-meteo.com/v1/forecast?"+q+"&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1").then(function(r){return r.json()})
+      .then(function(j){BR.w={t:j.current.temperature_2m,c:j.current.weather_code,hi:j.daily.temperature_2m_max[0],lo:j.daily.temperature_2m_min[0]}}).catch(function(){BR.w=null}).then(one);
+    fetch("https://api.aladhan.com/v1/timings/"+dd+"?"+q).then(function(r){return r.json()}).then(function(j){BR.p=j.data.timings}).catch(function(){BR.p=null}).then(one)})}
+function openBrief(cb){closeAction();$("#brief").classList.add("on");renderBrief();loadBrief(cb)}
+function closeBrief(){$("#brief").classList.remove("on")}
+$("#briefChip").onclick=function(){openBrief()};$("#briefClose").onclick=closeBrief;
+$("#briefRe").onclick=function(){BR.t=0;BR.w=BR.p=null;loadBrief()};
+$("#bPlay").onclick=function(){var d=JSON.stringify(briefData());closeBrief();
+  sendText(isEn()?"(Daily brief) Give me a short spoken brief using only these facts: "+d:"(ملخص اليوم) قولي لي ملخص قصير بصوتك من هذي المعلومات فقط: "+d,"ملخص اليوم")};
 
 /* ================= controls ================= */
 ["pointerdown","touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){if(ctx&&ctx.state!=="running")ctx.resume().catch(function(){})},true)});
