@@ -125,8 +125,13 @@ button{cursor:pointer}
         <div class="cell"><span class="ic pink"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg></span>
           <label for="voiceIn">الصوت</label>
           <select id="voiceIn">
+            <optgroup label="عربي سعودي · صوت نسائي">
             <option value="Kore">Kore · واثق</option><option value="Aoede">Aoede · هادئ</option><option value="Leda">Leda · شبابي</option>
             <option value="Zephyr">Zephyr · مشرق</option><option value="Sulafat">Sulafat · دافئ</option><option value="Achernar">Achernar · ناعم</option>
+            </optgroup>
+            <optgroup label="English · British, formal">
+            <option value="en:Charon">Charon · composed</option><option value="en:Algieba">Algieba · smooth</option><option value="en:Orus">Orus · firm</option>
+            </optgroup>
           </select>
           <svg class="chev" aria-hidden="true" width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6L5 2.5 8.5 6M1.5 10L5 13.5 8.5 10"></path></svg></div>
       </div>
@@ -239,7 +244,20 @@ function endTurn(){if(curMe){pushLog("u",curMe.textContent);curMe=null}if(curAi)
 
 /* ================= prompt ================= */
 function nowText(){try{return new Date().toLocaleString("ar-SA-u-ca-gregory-nu-latn",{timeZone:"Asia/Riyadh",weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+function isEn(){return (get(K.voice)||"").indexOf("en:")===0}
+function voiceName(){var v=get(K.voice)||"Kore";return v.indexOf("en:")===0?v.slice(3):v}
+function promptEn(){
+  var name=get(K.name).trim();
+  var past=log.slice(-14).map(function(l){return (l.r==="u"?"User: ":"You: ")+l.t}).join("\n");
+  return "You are Musaed, a personal assistant. Speak British English with a Received Pronunciation accent. Your manner is calm, composed, formal and courteous, with precise wording and the occasional touch of dry wit. Address the user as 'sir' unless told otherwise.\n"+
+  "Keep replies short and clear, one to three sentences, unless asked for detail. Answer any question, discuss, give a view, and carry long conversations smoothly, remembering what was said.\n"+
+  "This version is conversation only: you cannot place calls, send messages, or read email or calendars. If asked, say plainly that it is not available yet. If you do not know something, say so.\n"+
+  "Always reply in English, even if the user speaks Arabic, unless he asks you to switch.\n"+
+  (name?"The user's name is "+name+".\n":"")+
+  "Current time in Riyadh: "+nowText()+".\n"+
+  (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
+  if(isEn())return promptEn();
   var name=get(K.name).trim();
   var past=log.slice(-14).map(function(l){return (l.r==="u"?"هو: ":"أنتِ: ")+l.t}).join("\n");
   return "أنتِ «مساعد»، مساعدة شخصية سعودية بصوت نسائي. تتكلمين دائماً باللهجة السعودية الدارجة (نجدية بيضاء) بشكل طبيعي ودافي، مثل صديقة ذكية يُعتمد عليها، وبصيغة المؤنث عن نفسك.\n"+
@@ -280,7 +298,7 @@ function startMic(){
 /* ================= session ================= */
 function setupMsg(){
   var s={model:"models/"+MODEL,
-    generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:get(K.voice)||"Kore"}}}},
+    generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
     systemInstruction:{parts:[{text:prompt()}]}};
   if(attempt===0){s.inputAudioTranscription={};s.outputAudioTranscription={}}
   return {setup:s}}
@@ -304,7 +322,7 @@ function connect(){
     else note("تعذّر الاتصال. "+(why?"السبب: "+why:"تحقق من الإنترنت ومن المفتاح."))}}
 function handle(m){
   if(m.setupComplete){ready=true;startedAt=Date.now();startMic();setMode("listen");
-    var first=pendingText||(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج.");
+    var first=pendingText||(isEn()?"(Session start) Greet me in one short sentence and ask how you can help.":(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج."));
     if(pendingText){curMe=bubble("me",pendingText);pendingText=""}
     ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
   var sc=m.serverContent;if(!sc)return;
