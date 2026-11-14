@@ -329,7 +329,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.7",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.8",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -874,8 +874,8 @@ function devRun(d){fetch(d.v,{method:"POST",mode:"no-cors"}).then(function(){toa
 TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(d){return {name:d.n,symbol:""}}),a.name,""),d=list[i];
   if(!d)return cb({error:"no matching action",available:list.map(function(x){return x.n}),tell_user:"Ask him to add it under Settings, Connected devices."});
   if(d.t==="hook"&&!d.c){devRun(d);return cb({sent:true,name:d.n})}
-  showAction({type:"device",title:d.n,tag:d.t==="sc"?"اختصار iPhone":"رابط ويب",body:"اضغط «نفّذ» للتأكيد.",go:d.t==="sc"?"shortcuts://run-shortcut?name="+encodeURIComponent(d.v):"#",goText:"نفّذ",fn:d.t==="sc"?null:function(){devRun(d)}});
-  cb({awaiting_user_tap:true,name:d.n,note:"A card is on screen; it runs when he taps it."})};
+  showAction({type:"device",title:d.n,tag:d.t==="sc"?"اختصار iPhone":"رابط ويب",body:d.h||"اضغط «نفّذ» للتأكيد.",go:d.t==="sc"?"shortcuts://run-shortcut?name="+encodeURIComponent(d.v):"#",goText:"نفّذ",fn:d.t==="sc"?null:function(){devRun(d)}});
+  cb({awaiting_user_tap:true,name:d.n,note:"A card is on screen; it runs when he taps it."+(d.m?" "+d.m:"")})};
 var DELSVG='<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>';
 function rows(ul,items,nf,sf,del){ul.textContent="";ul.hidden=!items.length;items.forEach(function(it,ix){var li=document.createElement("li"),tt=document.createElement("div"),n=document.createElement("span"),s2=document.createElement("span"),b=document.createElement("button");
   li.className="cell rowi";tt.className="tt";n.className="n";s2.className="s";n.textContent=nf(it);s2.textContent=sf(it);b.type="button";b.className="del";b.setAttribute("aria-label","حذف "+nf(it));b.innerHTML=DELSVG;b.onclick=function(){del(it,ix)};
@@ -888,6 +888,8 @@ function renderDev(){if(!$("#devList"))return;rows($("#devList"),devGet(),functi
 $("#dvAdd").onclick=function(){var n=$("#dvName").value.trim().slice(0,60),t=$("#dvType").value,v=$("#dvVal").value.trim().slice(0,400),c=$("#dvConf").checked||t==="sc";
   if(!n||!v){toast("أدخل الاسم والقيمة");return}if(t==="hook"&&!/^https:\/\//i.test(v)){toast("الرابط يجب أن يبدأ بـ https://");return}
   var a=devGet().filter(function(x){return x.n!==n});a.push({n:n,t:t,v:v,c:c});set(K.dev,JSON.stringify(a.slice(-40)));$("#dvName").value="";$("#dvVal").value="";renderDev();toast("أُضيف: "+n)};
+(function(){try{if(get("musaed.seedRR"))return;set("musaed.seedRR","1");var a=devGet();if(a.some(function(x){return x.v==="Range Rover"}))return;
+  a.push({n:"رنج روفر: تشغيل السيارة والمكيف",t:"sc",v:"Range Rover",c:true,h:"يفتح تطبيق لاند روفر. اضغط Engine Start وأدخل رمزك، ويشتغل المحرك والمكيف.",m:"This opens the Land Rover app; he must press Engine Start and enter his PIN there. Do not say the car has started. Engine and AC then run for up to 30 minutes."});set(K.dev,JSON.stringify(a));renderDev()}catch(e){}})();
 $("#gBtn").onclick=function(){set(K.gid,$("#gidIn").value.trim());if(gtok())gDisconnect();else gConnect()};
 function gTiles(T,sum){var e,now=Date.now(),nx=null,d,m;
   if(!gtok()){e=tile("mail","#BFA6FF","التقويم والبريد",true,true);line(e,"ts","اربط حساب Google ليظهر موعدك التالي والرسائل التي تنتظر ردك.");line(e,"tl2","ربط حساب Google");e.onclick=function(){closeBrief();gConnect()};T.appendChild(e);return}
