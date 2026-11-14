@@ -338,7 +338,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.10",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.11",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -930,7 +930,7 @@ function acShow(){if(!$("#csIn"))return;$("#csIn").value=get(K.cs);$("#ckIn").va
 $("#csBtn").onclick=function(){var u=$("#csIn").value.trim().replace(/\/+$/,""),k=$("#ckIn").value;if(!/^https:\/\//.test(u)){toast("الرابط يجب أن يبدأ بـ https://");return}if(k.length<12){toast("كلمة السر ١٢ حرفًا أو أكثر");return}
   set(K.cs,u);set(K.ck,k);$("#csState").textContent="جارٍ الفحص… قد يأخذ دقيقة";
   fetch(u+"/me",{headers:{"Authorization":"Bearer "+k},cache:"no-store"}).then(function(r){return r.json().then(function(j){return {st:r.status,j:j}})}).then(function(x){
-    $("#csState").textContent=x.st===401?"كلمة السر غير صحيحة":x.j.ready?"جاهز · "+(x.j.from||""):"ناقص: "+(x.j.missing||[]).join(", ");if(x.j.ready)toast("مكالمات المساعد جاهزة. أعد فتح التطبيق لتفعيلها.")},function(){$("#csState").textContent="تعذّر الوصول إلى الخادم"})};
+    $("#csState").textContent=x.st===401?"كلمة السر غير صحيحة":x.j.ready?"جاهز · "+(x.j.from||""):"ناقص: "+(x.j.missing||[]).join(", ");if(x.j.ready){toast("مكالمات المساعد جاهزة.");if(live){stop();setTimeout(start,500)}}},function(){$("#csState").textContent="تعذّر الوصول إلى الخادم"})};
 acShow();
 var DELSVG='<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>';
 function rows(ul,items,nf,sf,del){ul.textContent="";ul.hidden=!items.length;items.forEach(function(it,ix){var li=document.createElement("li"),tt=document.createElement("div"),n=document.createElement("span"),s2=document.createElement("span"),b=document.createElement("button");
