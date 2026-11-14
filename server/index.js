@@ -74,6 +74,7 @@ function modelToPhone(st, b64, rate) {
 }
 
 /* ---------- small helpers ---------- */
+function log(c, what) { console.log("[call " + (c && c.id ? c.id.slice(0, 6) : "-") + "] " + what); }
 const calls = new Map();
 let dayKey = "", dayCount = 0;
 function safeEq(a, b) {
@@ -148,9 +149,10 @@ async function placeCall(c) {
   for (const [name, make] of tries) {
     const r = await twilio("/Calls.json", make());
     tried.push(name);
-    if (r.ok && r.j.sid) { c.mode = name; return r; }
+    if (r.ok && r.j.sid) { c.mode = name; log(c, "placed, mode=" + name + ", provider status=" + r.j.status); return r; }
     last = r;
     const code = +r.j.code || 0, msg = String(r.j.message || "");
+    log(c, "provider refused mode=" + name + " http=" + r.status + " code=" + code + " msg=" + msg.slice(0, 200));
     if (code === 21219 || code === 21215 || code === 21211 || code === 13227 || !/parameter|disallow|not allowed|trial/i.test(msg)) break;
   }
   last.tried = tried;
@@ -162,6 +164,7 @@ function watch(c) {
     if (c.status === "done" || c.status === "failed" || !c.sid) return;
     try {
       const r = await twilioGet("/Calls/" + c.sid + ".json"), s = r.ok ? String(r.j.status || "") : "";
+      if (s && s !== c.lastTw) { c.lastTw = s; log(c, "provider status=" + s + (r.j.duration ? " duration=" + r.j.duration : "")); }
       if (s === "ringing" && c.status === "starting") c.status = "ringing";
       else if (s === "in-progress") c.answered = c.answered || Date.now();
       else if (TERMINAL[s]) return finish(c, s);
@@ -184,6 +187,7 @@ function finish(c, twStatus) {
     const o = TERMINAL[twStatus] || (c.answered ? "ended" : "failed");
     c.result = { outcome: o, summary: "" };
   }
+  log(c, "finished: provider=" + twStatus + " outcome=" + c.result.outcome + " answered=" + !!c.answered + " bridged=" + !!c.tw + (c.error ? " error=" + c.error : ""));
   c.status = (c.result.outcome === "failed" || c.result.outcome === "busy" || c.result.outcome === "no_answer" || c.result.outcome === "canceled") && !c.answered ? "failed" : "done";
   try { if (c.gem && c.gem.readyState <= 1) c.gem.close(); } catch (e) { /* closing */ }
   try { if (c.tw && c.tw.readyState <= 1) c.tw.close(); } catch (e) { /* closing */ }
@@ -269,11 +273,12 @@ function bridge(c, tw, streamSid) {
   const gem = new WebSocket(CFG.gemWs + "?key=" + encodeURIComponent(CFG.gemKey));
   c.gem = gem;
   const toPhone = o => { if (tw.readyState === 1) tw.send(JSON.stringify(o)); };
-  gem.on("open", () => gem.send(JSON.stringify(gemSetup(c))));
+  log(c, "phone stream connected");
+  gem.on("open", () => { log(c, "voice session open"); gem.send(JSON.stringify(gemSetup(c))); });
   gem.on("message", data => {
     let m; try { m = JSON.parse(data.toString()); } catch (e) { return; }
     if (m.setupComplete) {
-      ready = true;
+      ready = true; log(c, "voice session ready");
       for (const a of early.splice(0)) gem.send(a);
       gem.send(JSON.stringify({ realtimeInput: { text: c.lang === "en" ? "(The call has just been answered. Speak now: greet, say who you are, and why you are calling.)" : "(تم الرد على المكالمة الآن. ابدئي الكلام: سلّمي، عرّفي بنفسك، وقولي سبب الاتصال.)" } }));
       return;
@@ -305,10 +310,11 @@ function bridge(c, tw, streamSid) {
     if (sc.turnComplete) flushTurn(c);
   });
   gem.on("close", (code, why) => {
+    log(c, "voice session closed code=" + code + " reason=" + (why ? why.toString().slice(0, 200) : ""));
     if (c.status === "talking" && !c.result) { c.error = "voice_session_closed" + (why && why.length ? ": " + why.toString().slice(0, 160) : ""); }
     if (c.status === "talking") hangup(c);
   });
-  gem.on("error", () => {});
+  gem.on("error", e => log(c, "voice session error " + String(e && e.message).slice(0, 160)));
   tw.on("message", raw => {
     let m; try { m = JSON.parse(raw.toString()); } catch (e) { return; }
     if (m.event === "media" && m.media && m.media.payload) {
@@ -372,8 +378,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && (p === "/twiml" || p === "/status")) {
       const params = Object.fromEntries(new URLSearchParams(await readBody(req, 65536)));
-      if (!safeEq(req.headers["x-twilio-signature"] || "", twilioSig(CFG.pub + req.url, params))) { res.writeHead(403); return res.end("forbidden"); }
       const c = calls.get(u.searchParams.get("id") || "");
+      if (!safeEq(req.headers["x-twilio-signature"] || "", twilioSig(CFG.pub + req.url, params))) { log(c, p + " rejected: bad signature (has header=" + !!req.headers["x-twilio-signature"] + ")"); res.writeHead(403); return res.end("forbidden"); }
+      if (p === "/twiml") log(c, "instructions fetched by provider");
       if (p === "/status") {
         if (c) {
           const s = params.CallStatus;
@@ -396,6 +403,7 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
 server.on("upgrade", (req, sock, head) => {
   if (new URL(req.url, "http://x").pathname !== "/media") { sock.destroy(); return; }
+  console.log("[media] websocket upgrade from provider");
   wss.handleUpgrade(req, sock, head, ws => {
     const guard = setTimeout(() => ws.close(), 10000);
     const first = raw => {
@@ -403,7 +411,7 @@ server.on("upgrade", (req, sock, head) => {
       if (m.event !== "start" || !m.start) return;
       clearTimeout(guard); ws.off("message", first);
       const cp = m.start.customParameters || {}, c = calls.get(String(cp.id || ""));
-      if (!c || !safeEq(cp.t || "", c.tok) || c.tw) { ws.close(); return; }
+      if (!c || !safeEq(cp.t || "", c.tok) || c.tw) { log(c, "phone stream rejected (unknown call or token)"); ws.close(); return; }
       bridge(c, ws, m.start.streamSid || m.streamSid);
     };
     ws.on("message", first);
