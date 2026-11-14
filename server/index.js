@@ -122,6 +122,54 @@ async function twilio(path, form) {
   try { j = await r.json(); } catch (e) { /* empty body */ }
   return { ok: r.ok, status: r.status, j };
 }
+async function twilioGet(path) {
+  const r = await fetch(CFG.twilioApi + "/2010-04-01/Accounts/" + CFG.sid + path, { headers: { Authorization: "Basic " + Buffer.from(CFG.sid + ":" + CFG.tok).toString("base64") } });
+  let j = {};
+  try { j = await r.json(); } catch (e) { /* empty body */ }
+  return { ok: r.ok, status: r.status, j };
+}
+function twimlFor(c) {
+  const wss = CFG.pub.replace(/^https:/, "wss:") + "/media";
+  return '<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream url="' + wss + '"><Parameter name="id" value="' + c.id + '"/><Parameter name="t" value="' + c.tok + '"/></Stream></Connect></Response>';
+}
+/* Some accounts (trials) accept only a reduced set of call parameters, so fall back step by step. */
+async function placeCall(c) {
+  const base = { To: c.to, From: CFG.from };
+  const tries = [
+    ["full", () => {
+      const f = new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id, Method: "POST", StatusCallback: CFG.pub + "/status?id=" + c.id, StatusCallbackMethod: "POST", TimeLimit: String(CFG.maxSec) });
+      for (const ev of ["initiated", "ringing", "answered", "completed"]) f.append("StatusCallbackEvent", ev);
+      return f;
+    }],
+    ["url", () => new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id })],
+    ["twiml", () => new URLSearchParams({ ...base, Twiml: twimlFor(c) })]
+  ];
+  let last = null; const tried = [];
+  for (const [name, make] of tries) {
+    const r = await twilio("/Calls.json", make());
+    tried.push(name);
+    if (r.ok && r.j.sid) { c.mode = name; return r; }
+    last = r;
+    const code = +r.j.code || 0, msg = String(r.j.message || "");
+    if (code === 21219 || code === 21215 || code === 21211 || code === 13227 || !/parameter|disallow|not allowed|trial/i.test(msg)) break;
+  }
+  last.tried = tried;
+  return last;
+}
+/* Follow the call's state ourselves, so it works with or without status callbacks. */
+function watch(c) {
+  const tick = async () => {
+    if (c.status === "done" || c.status === "failed" || !c.sid) return;
+    try {
+      const r = await twilioGet("/Calls/" + c.sid + ".json"), s = r.ok ? String(r.j.status || "") : "";
+      if (s === "ringing" && c.status === "starting") c.status = "ringing";
+      else if (s === "in-progress") c.answered = c.answered || Date.now();
+      else if (TERMINAL[s]) return finish(c, s);
+    } catch (e) { /* try again on the next tick */ }
+    c.watchT = setTimeout(tick, 2000);
+  };
+  c.watchT = setTimeout(tick, 1500);
+}
 function hangup(c) {
   if (!c.sid || c.hung) return;
   c.hung = true;
@@ -131,7 +179,7 @@ const TERMINAL = { completed: "ended", busy: "busy", "no-answer": "no_answer", f
 function finish(c, twStatus) {
   if (c.status === "done" || c.status === "failed") return;
   flushTurn(c);
-  c.ended = Date.now();
+  c.ended = Date.now(); clearTimeout(c.watchT); clearTimeout(c.maxT);
   if (!c.result) {
     const o = TERMINAL[twStatus] || (c.answered ? "ended" : "failed");
     c.result = { outcome: o, summary: "" };
@@ -215,6 +263,7 @@ function gemSetup(c) {
 /* ---------- one call: bridge the phone stream to the voice model ---------- */
 function bridge(c, tw, streamSid) {
   c.tw = tw; c.streamSid = streamSid; c.answered = c.answered || Date.now(); c.status = "talking";
+  c.maxT = setTimeout(() => hangup(c), CFG.maxSec * 1000);
   const st = { inPrev: 0, outRate: 0, outAcc: 0, outCnt: 0, outPos: 0 };
   let ready = false; const early = [];
   const gem = new WebSocket(CFG.gemWs + "?key=" + encodeURIComponent(CFG.gemKey));
@@ -303,17 +352,15 @@ const server = http.createServer(async (req, res) => {
         status: "starting", created: Date.now(), transcript: [], cur: null, result: null
       };
       calls.set(c.id, c); dayCount++;
-      const form = new URLSearchParams({ To: to, From: CFG.from, Url: CFG.pub + "/twiml?id=" + c.id, Method: "POST", StatusCallback: CFG.pub + "/status?id=" + c.id, StatusCallbackMethod: "POST", TimeLimit: String(CFG.maxSec) });
-      for (const ev of ["initiated", "ringing", "answered", "completed"]) form.append("StatusCallbackEvent", ev);
-      const r = await twilio("/Calls.json", form);
+      const r = await placeCall(c);
       if (!r.ok || !r.j.sid) {
         dayCount--; c.status = "failed"; c.ended = Date.now();
         const code = +r.j.code || 0;
         c.error = code === 21219 ? "trial_unverified" : code === 21215 || code === 13227 ? "country_not_enabled" : "provider_error";
         c.result = { outcome: "failed", summary: "" };
-        return send(res, 502, { error: c.error, provider_code: code, provider_message: String(r.j.message || "").slice(0, 300) });
+        return send(res, 502, { error: c.error, provider_code: code, provider_message: String(r.j.message || "").slice(0, 300), tried: r.tried || [] });
       }
-      c.sid = r.j.sid;
+      c.sid = r.j.sid; watch(c);
       return send(res, 200, { id: c.id, status: c.status });
     }
     let mm = /^\/call\/([a-f0-9]{18})(\/hangup)?$/.exec(p);
@@ -338,8 +385,7 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { "Content-Type": "text/xml; charset=utf-8" });
       if (!c) return res.end('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>');
-      const wss = CFG.pub.replace(/^https:/, "wss:") + "/media";
-      return res.end('<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream url="' + wss + '"><Parameter name="id" value="' + c.id + '"/><Parameter name="t" value="' + c.tok + '"/></Stream></Connect></Response>');
+      return res.end(twimlFor(c));
     }
     send(res, 404, { error: "not_found" });
   } catch (e) {
