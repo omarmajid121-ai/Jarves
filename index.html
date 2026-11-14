@@ -331,6 +331,22 @@ button.tile:active{transform:scale(.97)}
 #bPlay i{width:44px;height:44px;border-radius:22px;background:#fff;color:#000;display:grid;place-items:center;flex:none}
 #bPlay span{flex:1;text-align:start}
 @media (prefers-reduced-motion:reduce){#amb i,.live i,#edge,.sk{animation:none!important}}
+
+.cb-media.mini img.ph{height:112px;object-position:top}
+#docView{position:fixed;inset:0;z-index:60;background:#fff;color:#111;display:none;flex-direction:column;direction:rtl}
+#docView.on{display:flex}
+#docView .bar{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;border-bottom:1px solid #E5E5EA}
+#docView .bar b{flex:1;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#docView .bar span{font-size:13px;color:#6B6B70;font-variant-numeric:tabular-nums}
+#docView button{font:inherit;border:0;background:#F2F2F7;color:#111;border-radius:22px;min-width:44px;height:44px;padding:0 16px;font-size:15px;font-weight:600}
+#docView button:active{background:#E5E5EA}
+#dvStage{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;background:#fff;-webkit-overflow-scrolling:touch}
+#dvImg{max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in}
+#docView.zoom #dvStage{display:block}
+#docView.zoom #dvImg{max-width:none;max-height:none;width:240%;cursor:zoom-out}
+#dvPdf{width:100%;height:100%;border:0}
+#docView .ft{display:flex;align-items:center;gap:10px;padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 12px);border-top:1px solid #E5E5EA}
+#docView .ft p{flex:1;margin:0;text-align:center;font-size:12.5px;line-height:18px;color:#6B6B70}
 </style>
 </head>
 <body data-mode="idle">
@@ -371,6 +387,15 @@ button.tile:active{transform:scale(.97)}
   <div class="skel" id="actSkel" hidden><i></i><i></i><i></i></div>
   <div class="abtns"><button id="actAlt" type="button" hidden></button><a id="actGo" href="#" hidden></a><button id="actSecond" type="button" hidden></button><button id="actClose" type="button">إغلاق</button></div>
 </div>
+<input type="file" id="docCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="docImg" accept="image/*" hidden>
+<input type="file" id="docPdf" accept="application/pdf" hidden>
+<input type="file" id="docAny" accept="image/*,application/pdf" hidden>
+<div id="docView" role="dialog" aria-modal="true" aria-label="عرض الوثيقة">
+  <div class="bar"><button type="button" id="dvClose">إغلاق</button><b id="dvTitle"></b><span id="dvPg"></span></div>
+  <div id="dvStage"><img id="dvImg" alt="الوثيقة"><iframe id="dvPdf" title="الوثيقة" hidden></iframe></div>
+  <div class="ft"><button type="button" id="dvPrev" hidden>السابقة</button><p>ارفع سطوع الشاشة عند المسح. اضغط الصورة للتكبير.</p><button type="button" id="dvNext" hidden>التالية</button></div>
+</div>
 <section id="sheet" aria-label="تفاصيل البطاقة">
   <button id="sheetGrab" type="button" aria-label="إغلاق اللوحة"></button>
   <div class="arow"><span class="ic" id="sheetIc"></span><div class="tt"><div id="sheetTitle"></div><div id="sheetTag"></div></div></div>
@@ -404,6 +429,10 @@ button.tile:active{transform:scale(.97)}
       <ul id="pfList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
       <p class="gftr">تُحفظ محفظتك على هذا الجهاز فقط. للمتابعة فقط، وليست توصية بالبيع أو الشراء.</p>
       <div class="group" id="pfClearG" hidden><button class="cell plain danger" id="pfClear">مسح المحفظة</button></div>
+      <p class="ghdr">وثائقي</p>
+      <ul id="dcList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
+      <div class="group"><button class="cell plain" id="dcAdd">إضافة بطاقة صعود أو حجز</button></div>
+      <p class="gftr">تُحفظ على هذا الجهاز فقط، وتُرسل صورتها إلى Google AI لقراءة التفاصيل. لا يُحفظ جواز ولا هوية ولا بطاقة بنك.</p>
       <p class="ghdr" id="ctH" hidden>أرقام محفوظة</p>
       <ul id="ctList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
       <p class="ghdr" id="ntH" hidden>الملاحظات</p>
@@ -485,7 +514,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.15",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.16",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -675,7 +704,7 @@ function blk(b,sheet){var e,i;
   if(b.t==="bubble")return cEl("div","cb-bubble",b.x);
   if(b.t==="chips"){e=cEl("div","cb-chips");b.items.forEach(function(x,ix){var c=cEl("button",b.on===ix?"on":"",x);c.type="button";c.onclick=function(){b.fn(x,ix)};e.appendChild(c)});return e}
   if(b.t==="wave"){e=cEl("div","cb-wave");e.setAttribute("aria-hidden","true");for(i=0;i<26;i++){var w=cEl("i");w.style.height=(8+((i*37)%19))+"px";w.style.animationDelay=((i%5)*0.14)+"s";e.appendChild(w)}return e}
-  if(b.t==="photo"){e=cEl("div","cb-media"+(b.tap&&!sheet?" tap":""));var im=cEl("img","ph");im.alt=b.alt||"";im.referrerPolicy="no-referrer";im.src=b.src;im.onerror=function(){e.style.display="none"};e.appendChild(im);
+  if(b.t==="photo"){e=cEl("div","cb-media"+(b.mini&&!sheet?" mini":"")+(b.tap&&!sheet?" tap":""));var im=cEl("img","ph");im.alt=b.alt||"";im.referrerPolicy="no-referrer";im.src=b.src;im.onerror=function(){e.style.display="none"};e.appendChild(im);
     if(b.total>1){var ds=cEl("span","cb-dots");for(i=0;i<b.total;i++)ds.appendChild(cEl("i",i===b.n?"on":""));e.appendChild(ds)}
     if(b.tap&&!sheet){e.appendChild(cEl("span","cb-badge","تكبير"));e.onclick=b.tap}return e}
   if(b.t==="map"){e=mapBlock(b.coords,cardW(sheet),sheet?260:190,b.badge);if(b.tap&&!sheet){e.className+=" tap";e.onclick=b.tap}return e}
@@ -786,6 +815,7 @@ function promptEn(){
   "For anything current (weather, news, prices, prayer times, opening hours, places) use Google search when available, and be accurate. If you need his location and it is not given above, call get_location.\n"+
   "For weather or prayer-time questions call today_data with show set to weather or prayer, and answer by voice from it. Call show_brief only when he asks for his daily brief or to see the cards.\n"+
   "Portfolio: when he says he bought or sold shares, or sets a price target, call portfolio_update at once and confirm in one sentence. When he asks about his portfolio or a stock he holds, search Google for the latest price, then call show_portfolio with the quotes you found, and tell him the price, his gain or loss against his cost, and the distance to his target. Say prices may be delayed. Never recommend buying, selling or holding and never predict prices; if he asks whether to buy or sell, say the decision is his and give facts only. Use the same stock name already in the portfolio.\n"+pfLine(true)+
+  "Documents: he can keep a boarding pass, hotel booking or event ticket on this phone. To add one call doc_add; he taps camera, photo or PDF on the card. After an upload the app tells you what it read: say the key details in one sentence, ask whether to save it, then call doc_confirm. To show one call doc_show with its kind, and full true when he is at the gate or wants it scanned. When he asks about his own flight or booking, check doc_list before answering. Fix a wrongly read detail with doc_update. Do not read a booking code aloud unless he asks. Passports, identity cards and bank cards are not kept.\n"+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
   if(isEn())return promptEn();
@@ -799,6 +829,7 @@ function prompt(){
   "أي معلومة حالية (طقس، أخبار، أسعار، مواقيت صلاة، أوقات دوام، أماكن) ابحثي عنها في قوقل إذا متاح، وكوني دقيقة. وإذا احتجتي موقعه وما هو مذكور فوق، استخدمي get_location.\n"+
   "إذا سأل عن الطقس أو مواقيت الصلاة استخدمي today_data مع show بقيمة weather أو prayer، وجاوبيه بصوتك منها. واستخدمي show_brief فقط إذا طلب ملخص يومه أو طلب يشوف البطاقات.\n"+
   "المحفظة: إذا قال إنه شرى أو باع أسهم أو حدد هدف سعر، استخدمي portfolio_update على طول وأكدي له بجملة. وإذا سأل عن محفظته أو عن سهم عنده، ابحثي في قوقل عن آخر سعر، ثم استخدمي show_portfolio ومرري الأسعار اللي لقيتيها، وقولي له السعر وربحه أو خسارته عن سعر شرائه وكم باقي على هدفه. نبهيه إن الأسعار ممكن تكون متأخرة. ممنوع تعطين توصية شراء أو بيع أو تتوقعين سعر؛ وإذا سألك «أبيع ولا أشتري؟» قولي إن القرار له وأعطيه الحقائق بس. استخدمي نفس اسم السهم الموجود في المحفظة.\n"+pfLine(false)+
+  "الوثائق: يقدر يحفظ بطاقة صعود أو حجز فندق أو تذكرة على جواله. للإضافة استدعي doc_add وهو يضغط الكاميرا أو الصور أو ملف PDF على البطاقة. بعد الرفع التطبيق يعطيك اللي قرأه: قولي أهم التفاصيل بجملة، واسأليه يحفظها، ثم استدعي doc_confirm. للعرض استدعي doc_show مع النوع، ومع full true إذا كان عند البوابة أو يبي يمسحها. إذا سأل عن رحلته أو حجزه شوفي doc_list قبل تجاوبين. إذا فيه معلومة انقرأت غلط صحّحيها بـ doc_update. لا تقرين رمز الحجز بصوت عالي إلا إذا طلب. الجوازات والهويات وبطاقات البنك ما تنحفظ.\n"+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
 /* ================= audio ================= */
@@ -1376,7 +1407,7 @@ function rows(ul,items,nf,sf,del){ul.textContent="";ul.hidden=!items.length;item
   li.className="cell rowi";tt.className="tt";n.className="n";s2.className="s";n.textContent=nf(it);s2.textContent=sf(it);b.type="button";b.className="del";b.setAttribute("aria-label","حذف "+nf(it));b.innerHTML=DELSVG;b.onclick=function(){del(it,ix)};
   tt.appendChild(n);tt.appendChild(s2);li.appendChild(tt);li.appendChild(b);ul.appendChild(li)})}
 function delFrom(k,d,after){var prev=lsArr(k);set(k,JSON.stringify(prev.filter(function(x){return x.d!==d})));after();toast("حُذف",function(){set(k,JSON.stringify(prev));after()})}
-function renderData(){if(!$("#ntList"))return;var n=lsArr(K.notes).slice(-20).reverse(),m=locISO(new Date()).slice(0,7),ex=lsArr(K.exp).filter(function(x){return locISO(new Date(x.d)).slice(0,7)===m}).slice(-20).reverse(),em=exMonth();
+function renderData(){if(!$("#ntList"))return;docRender();var n=lsArr(K.notes).slice(-20).reverse(),m=locISO(new Date()).slice(0,7),ex=lsArr(K.exp).filter(function(x){return locISO(new Date(x.d)).slice(0,7)===m}).slice(-20).reverse(),em=exMonth();
   var ct=ctGet().slice().reverse();$("#ctH").hidden=!ct.length;rows($("#ctList"),ct,function(x){return x.n},function(x){return x.p},function(x){var prev=ctGet();set(K.ct,JSON.stringify(prev.filter(function(y){return y.d!==x.d})));renderData();toast("حُذف: "+x.n,function(){set(K.ct,JSON.stringify(prev));renderData()})});
   $("#ntH").hidden=!n.length;rows($("#ntList"),n,function(x){return x.x},function(x){return locISO(new Date(x.d)).slice(0,10)},function(x){delFrom(K.notes,x.d,renderData)});
   $("#exH").hidden=!ex.length;$("#exH").textContent="مصاريف هذا الشهر · "+fmt(em.total)+" ر.س";rows($("#exList"),ex,function(x){return fmt(x.a)+" ر.س"+(x.c?" · "+x.c:"")},function(x){return (x.x?x.x+" · ":"")+locISO(new Date(x.d)).slice(0,10)},function(x){delFrom(K.exp,x.d,renderData)})}
@@ -1434,7 +1465,165 @@ var P1={type:"STRING"},FOPT={type:"OBJECT",properties:{depart_time:P1,arrive_tim
  {name:"expense_add",description:"Record money he spent.",parameters:{type:"OBJECT",properties:{amount:{type:"NUMBER"},category:P1,note:P1},required:["amount"]}},
  {name:"expenses_summary",description:"This month's spending total and by category."},
  {name:"show_news",description:"Show a headlines card. Search first, then pass what you found.",parameters:{type:"OBJECT",properties:{items:{type:"ARRAY",items:{type:"OBJECT",properties:{title:P1,source:P1},required:["title"]}}},required:["items"]}},
- {name:"device_action",description:"Run one of his connected smart-home or car actions by name.",parameters:{type:"OBJECT",properties:{name:P1},required:["name"]}}];
+ {name:"device_action",description:"Run one of his connected smart-home or car actions by name.",parameters:{type:"OBJECT",properties:{name:P1},required:["name"]}},
+ {name:"doc_add",description:"He wants to save a boarding pass, hotel booking or event ticket. Shows a card where he taps camera, photo or PDF file. You cannot open the camera yourself."},
+ {name:"doc_confirm",description:"Save or discard the document he just uploaded, after he answers. save true keeps it on this phone and adds it to his calendar; save false discards it.",parameters:{type:"OBJECT",properties:{save:{type:"BOOLEAN"}},required:["save"]}},
+ {name:"doc_show",description:"Show a saved document (boarding pass, hotel booking, ticket) as a card. Set full true to open it full screen at once, when he is at the gate or the desk or asks to scan it.",parameters:{type:"OBJECT",properties:{kind:{type:"STRING",enum:["boarding","hotel","event","other"]},query:{type:"STRING",description:"A word to match: city, airline, hotel or event name"},id:P1,full:{type:"BOOLEAN"}}}},
+ {name:"doc_list",description:"List his saved documents and show the list card."},
+ {name:"doc_update",description:"Correct details the app read wrongly from a document, or add missing ones. Without id it changes the one just uploaded. Dates are YYYY-MM-DD, times are 24-hour HH:MM.",parameters:{type:"OBJECT",properties:{id:P1,kind:{type:"STRING",enum:["boarding","hotel","event","other"]},title:P1,name:P1,code:P1,date:P1,time:P1,end_date:P1,place:P1,seat:P1,airline:P1,flight:P1,from_code:P1,from_city:P1,to_code:P1,to_city:P1,arrive_time:P1,boarding_time:P1,gate:P1,terminal:P1,notes:P1}}},
+ {name:"doc_delete",description:"Ask him to confirm deleting a saved document; a confirm card is shown.",parameters:{type:"OBJECT",properties:{id:P1},required:["id"]}}];
+
+/* ================= documents: boarding pass, hotel booking, tickets ================= */
+K.docs="musaed.docs";KIND.flight=["رحلة","#5E5CE6"];KIND.stay=["إقامة","#FF9F0A"];KIND.event=["فعالية","#30D158"];
+var DK={boarding:["بطاقة صعود","plane","flight"],hotel:["حجز فندق","bed","stay"],event:["تذكرة","spark","event"],other:["وثيقة","note","appointment"]},
+  DF=["title","name","code","date","time","end_date","place","seat","airline","flight","from_code","from_city","to_code","to_city","arrive_time","boarding_time","gate","terminal","class","notes"],
+  GAPI="https://generativelanguage.googleapis.com/v1beta/",PDFJS="vendor/pdfjs/",
+  docBusy=false,docModel="",dbP=null,pdfP=null,memF={},dvS=null,wakeL=null;
+function docGet(){return lsArr(K.docs)}
+function docSet(a){set(K.docs,JSON.stringify(a))}
+function docFind(id){return docGet().filter(function(x){return x.id===id})[0]||null}
+function docDB(){return dbP||(dbP=new Promise(function(res,rej){try{var r=indexedDB.open("musaed",1);r.onupgradeneeded=function(){r.result.createObjectStore("files")};r.onsuccess=function(){res(r.result)};r.onerror=function(){dbP=null;rej(r.error)}}catch(e){dbP=null;rej(e)}}))}
+function dbDo(mode,fn){return docDB().then(function(db){return new Promise(function(res,rej){var t=db.transaction("files",mode),rq=fn(t.objectStore("files"));t.oncomplete=function(){res(rq&&rq.result)};t.onerror=t.onabort=function(){rej(t.error)}})})}
+function dbPut(k,v){return dbDo("readwrite",function(s){return s.put(v,k)}).catch(function(){memF[k]=v;return "mem"})}
+function dbGet(k){if(memF[k])return Promise.resolve(memF[k]);return dbDo("readonly",function(s){return s.get(k)}).catch(function(){return null})}
+function dbDel(k){delete memF[k];return dbDo("readwrite",function(s){return s.delete(k)}).catch(function(){})}
+function docFiles(d,fn){for(var i=0;i<(d.n||0);i++)fn(d.id+"/"+i);if(d.pdf)fn(d.id+"/pdf")}
+function fileData(f){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result))};r.onerror=function(){rej(new Error("image"))};r.readAsDataURL(f)})}
+function shrink(src,max){return new Promise(function(res,rej){var im=new Image();im.onload=function(){var w=im.naturalWidth,h=im.naturalHeight;if(!w||!h)return rej(new Error("image"));var k=Math.min(1,max/Math.max(w,h)),c=document.createElement("canvas");c.width=Math.round(w*k);c.height=Math.round(h*k);var g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=function(){rej(new Error("image"))};im.src=src})}
+function b64buf(b){var s=atob(b),n=s.length,u=new Uint8Array(n),i;for(i=0;i<n;i++)u[i]=s.charCodeAt(i);return u}
+function pdfLib(){return pdfP||(pdfP=new Promise(function(res,rej){if(window.pdfjsLib)return res(window.pdfjsLib);var s=document.createElement("script"),tm=setTimeout(function(){pdfP=null;rej(new Error("pdfload"))},20000);s.src=PDFJS+"pdf.min.js";
+  s.onload=function(){clearTimeout(tm);if(!window.pdfjsLib){pdfP=null;return rej(new Error("pdfload"))}window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js";res(window.pdfjsLib)};s.onerror=function(){clearTimeout(tm);pdfP=null;rej(new Error("pdfload"))};document.head.appendChild(s)}))}
+function pdfPages(buf){return pdfLib().then(function(L){return L.getDocument({data:buf}).promise}).then(function(pdf){var n=Math.min(pdf.numPages,4),out=[],i=1;
+  return (function nx(){if(i>n)return out;return pdf.getPage(i++).then(function(pg){var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(3,1600/v0.width)}),c=document.createElement("canvas");c.width=Math.round(v.width);c.height=Math.round(v.height);var g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);
+    return pg.render({canvasContext:g,viewport:v}).promise.then(function(){out.push(c.toDataURL("image/jpeg",.9));return nx()})})})()})}
+function docPrompt(){return "You read a travel or booking document for its owner and return ONLY one JSON object, no other text:\n"+
+  '{"kind":"boarding|hotel|event|other|refused","title":"","name":"","code":"","date":"YYYY-MM-DD","time":"HH:MM","end_date":"YYYY-MM-DD","place":"","seat":"","airline":"","flight":"","from_code":"","from_city":"","to_code":"","to_city":"","arrive_time":"HH:MM","boarding_time":"HH:MM","gate":"","terminal":"","class":"","notes":""}\n'+
+  "Rules: copy only what is printed; use an empty string for anything absent; never guess. Times are 24-hour, as printed, local to the place. "+
+  "kind: boarding = a boarding pass or flight e-ticket (date and time are the departure; code is the booking reference). hotel = a hotel or stay booking (place is the hotel name, date is check-in, time is check-in time if printed, end_date is check-out, code is the confirmation number). event = a ticket for an event, train, cinema or match (title is its name, place is the venue). other = any other booking or receipt worth keeping. "+
+  "refused = an identity card, passport, visa, residence permit, driving licence, bank or credit card, or a medical record; then leave every other field empty. "+
+  "title: a short Arabic title, for example «رحلة جدة» or «فندق الواحة». Write city names in Arabic; keep airport codes, flight numbers, seats and codes exactly as printed. "+
+  "If there are several passengers or pages, use the first passenger. If the year is not printed, choose the first such date on or after today. Today is "+locISO(new Date()).slice(0,10)+"."}
+function gemCall(m,key,body){var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort()},45000);
+  return fetch(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){clearTimeout(tm);return r.json().then(function(j){return {s:r.status,j:j}},function(){return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error("net")})}
+function gemModels(key){return fetch(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){return cArr(j&&j.models).filter(function(m){return cArr(m.supportedGenerationMethods).indexOf("generateContent")>=0&&/flash/.test(m.name)&&!/live|tts|image|audio|embed|lite|banana|native/.test(m.name)}).map(function(m){return m.name.replace("models/","")}).sort().reverse()},function(){return []})}
+function docRead(parts){var key=get(K.key).trim();if(!key)return Promise.reject(new Error("nokey"));
+  var body=function(js){var b={contents:[{role:"user",parts:[{text:docPrompt()}].concat(parts)}]};if(js)b.generationConfig={responseMimeType:"application/json"};return b},
+    run=function(m){return gemCall(m,key,body(true)).then(function(r){return r.s===400?gemCall(m,key,body(false)):r})},first=docModel||"gemini-flash-latest";
+  return run(first).then(function(r){if(r.s!==404&&r.s!==400)return r;return gemModels(key).then(function(l){l=l.filter(function(x){return x!==first});if(!l.length)return r;return run(l[0]).then(function(r2){if(r2.s===200)docModel=l[0];return r2})})})
+  .then(function(r){if(r.s!==200||!r.j)throw new Error(r.s===429?"quota":r.s===401||r.s===403?"key":"read");if(!docModel)docModel=first;
+    var c=cArr(r.j.candidates)[0]||{},t=cArr((c.content||{}).parts).filter(function(p){return !p.thought}).map(function(p){return p.text||""}).join(""),m=t.match(/\{[\s\S]*\}/),o;
+    try{o=JSON.parse(m?m[0]:t)}catch(e){throw new Error("read")}if(!o||typeof o!=="object")throw new Error("read");return o})}
+function hmOK(v){var m=/^(\d{1,2}):(\d{2})$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?(+m[1])*60+(+m[2]):-1}
+function hm(v){var n=hmOK(v);return n<0?cS(v,12):t12(n)}
+function docWhen(d){var f=d.f,ok=/^\d{4}-\d{2}-\d{2}$/.test(f.date||""),n=hmOK(f.time),w;d.when=0;d.allDay=0;if(!ok)return;
+  w=new Date(f.date+"T"+(n<0?"00:00":p2(Math.floor(n/60))+":"+p2(n%60))+":00");if(isNaN(w))return;d.when=w.getTime();d.allDay=n<0?1:0}
+function docTitle(d){var f=d.f,k=DK[d.kind]||DK.other;if(d.kind==="boarding"&&(f.to_city||f.to_code))return "رحلة "+(f.to_city||f.to_code)+(f.flight?" · "+f.flight:"");return f.title||(d.kind==="hotel"&&f.place?f.place:k[0])}
+function docMake(id,j,n,pdf,fname){var d={id:id,kind:"other",f:{},added:Date.now(),n:n,pdf:pdf?1:0,pend:1,shown:0,ev:""};j=j||{};if(DK[j.kind])d.kind=j.kind;
+  DF.forEach(function(k){var v=cS(j[k],k==="notes"?140:60);if(v)d.f[k]=v});["from_code","to_code"].forEach(function(k){if(d.f[k])d.f[k]=d.f[k].toUpperCase().slice(0,4)});
+  docWhen(d);d.title=docTitle(d);return d}
+function isoDay(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v||""))return v||"";try{return new Date(v+"T12:00:00").toLocaleDateString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long"})}catch(e){return v}}
+function dDate(d){if(!d.when)return d.f.date||"";try{return new Date(d.when).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long"})}catch(e){return d.f.date||""}}
+function docOut(d){var o={id:d.id,kind:d.kind,title:d.title,saved:!d.pend,pages:d.n||1,in_calendar:!!d.ev},k;for(k in d.f)o[k]=d.f[k];if(d.unread)o.details_read=false;return o}
+function docBlocks(d,src){var f=d.f,b=[],kv=[],add=function(k,v){if(v)kv.push([k,v])};
+  if(d.kind==="boarding"&&f.from_code&&f.to_code){add("التاريخ",dDate(d));add("الصعود",hm(f.boarding_time));add("البوابة",f.gate);add("المقعد",f.seat);add("الصالة",f.terminal);add("الحجز",f.code);
+    b.push({t:"ticket",from:f.from_code,fromCity:f.from_city||"",dep:hm(f.time),to:f.to_code,toCity:f.to_city||"",arr:hm(f.arrive_time),dur:f.airline||"",stops:"",fields:kv})}
+  else{if(d.kind==="boarding"){add("الرحلة",[f.airline,f.flight].filter(Boolean).join(" "));add("الموعد",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("البوابة",f.gate);add("المقعد",f.seat);add("الحجز",f.code)}
+    else if(d.kind==="hotel"){add("الفندق",f.place);add("الدخول",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("الخروج",isoDay(f.end_date));add("رقم الحجز",f.code);add("الاسم",f.name)}
+    else{add("المكان",f.place);add("الموعد",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("المقعد",f.seat);add("الرمز",f.code);add("ملاحظة",f.notes)}
+    if(kv.length)b.push({t:"kv",rows:kv})}
+  if(src)b.push({t:"photo",src:src,alt:d.title,mini:true,n:0,total:d.n,tap:function(){docOpen(d.id,0,true)}});
+  if(d.unread)b.push({t:"small",x:d.unread==="nokey"?"الصورة جاهزة. لقراءة التفاصيل أدخل مفتاح Google AI في الإعدادات.":d.unread==="quota"?"الصورة جاهزة. وصلت حد الاستخدام، فما انقرأت التفاصيل الآن.":"الصورة جاهزة، وما قدرت أقرأ التفاصيل. قل لمساعد البيانات وهي تضيفها."});
+  return b}
+function docCard(d,o){o=o||{};var k=DK[d.kind]||DK.other;return dbGet(d.id+"/0").then(function(src){
+  var a={type:"card",key:"doc|"+d.id,icon:k[1],tone:d.pend?"ask":"open",tagTone:d.pend||o.auto?"ask":"",title:d.title,tag:k[0]+" · "+(d.pend?"راجع ثم احفظ":o.auto||"على جوالك فقط"),keep:true,blocks:docBlocks(d,src)};
+  if(d.pend){a.go="#";a.goText="احفظي";a.fn=function(){var x=docKeep(d.id);if(x){toast("حُفظت: "+x.title);docCard(x)}};a.second={t:"لا تحفظي",fn:function(){docDrop(d.id);closeAction();toast("لم تُحفظ")}}}
+  else{a.go="#";a.goText=src?"عرض بملء الشاشة":"افتح الملف";a.fn=function(){docOpen(d.id,0,true)};if(docGet().filter(function(x){return !x.pend}).length>1)a.second={t:"كل الوثائق",fn:docListCard}}
+  showAction(a)})}
+function docListCard(){var l=docSorted(docGet().filter(function(x){return !x.pend}));
+  showAction({type:"card",key:"docs",icon:"note",tone:"open",title:"وثائقي",tag:l.length?l.length+" على جوالك فقط":"لا شيء محفوظ",keep:true,
+    blocks:l.length?[{t:"opts",items:l.slice(0,8).map(function(d){return {title:d.title,meta:(DK[d.kind]||DK.other)[0]+(d.when?" · "+dDate(d):"")}}),fn:function(ix){docCard(l[ix])}}]:[{t:"text",x:"أضف بطاقة صعود أو حجز فندق أو تذكرة، وأعرضها لك وقت ما تحتاجها."}],go:"#",goText:"إضافة وثيقة",fn:docAddCard})}
+function docSorted(l){var now=Date.now()-6*36e5;return l.slice().sort(function(a,b){var ua=a.when>=now,ub=b.when>=now;if(ua!==ub)return ua?-1:1;if(ua)return a.when-b.when;return (b.when||b.added)-(a.when||a.added)})}
+function docMatch(l,a){var id=cS(a.id,40),q=cS(a.query,80).toLowerCase(),m=l;if(id)return l.filter(function(x){return x.id===id});
+  if(DK[a.kind]){m=l.filter(function(x){return x.kind===a.kind});if(!m.length)m=l}
+  if(q){var ws=q.split(/\s+/).filter(function(w){return w.length>1}),hit=m.filter(function(d){var t=(d.title+" "+JSON.stringify(d.f)).toLowerCase();return ws.some(function(w){return t.indexOf(w)>=0})});if(hit.length)m=hit}
+  return docSorted(m)}
+function docDur(d){var a=hmOK(d.f.time),b=hmOK(d.f.arrive_time);if(a<0||b<0)return 120;var m=(b-a+1440)%1440;return m>=20&&m<=1080?m:120}
+function docKeep(id){var a=docGet(),d=a.filter(function(x){return x.id===id})[0];if(!d)return null;if(!d.pend)return d;d.pend=0;
+  var f=d.f,k=DK[d.kind]||DK.other,s=d.when,ok=s&&s>Date.now()-864e5&&(!d.allDay||d.kind==="hotel");
+  if(ok&&!d.ev){if(d.allDay)s+=15*36e5;var mins=d.kind==="boarding"?docDur(d):d.kind==="hotel"?60:120,c=calGet(),
+      title=d.kind==="boarding"?"رحلة "+(f.flight?f.flight+" ":"")+"إلى "+(f.to_city||f.to_code||""):d.kind==="hotel"?"دخول الفندق: "+(f.place||d.title):d.title,
+      loc=d.kind==="boarding"?[f.from_city||f.from_code,f.terminal?"صالة "+f.terminal:""].filter(Boolean).join(" · "):f.place||"",
+      old=c.filter(function(x){return !x.done&&x.kind===k[2]&&Math.abs(x.s-s)<45*60000})[0];
+    if(old){old.doc=d.id;old.pre=1;d.ev=old.id;calSet(c)}
+    else{var it={id:"L"+Date.now().toString(36)+Math.floor(Math.random()*900+100),title:title.trim(),s:s,mins:mins,kind:k[2],loc:loc,notes:"من وثيقة محفوظة في مساعد",gid:"",pre:1,doc:d.id};c.push(it);calSet(c);calPush(it);d.ev=it.id}}
+  docSet(a);docRender();return d}
+function docDrop(id){var a=docGet(),d=a.filter(function(x){return x.id===id})[0];if(!d)return;docSet(a.filter(function(x){return x.id!==id}));docFiles(d,dbDel);
+  if(d.ev){var f=calFind(d.ev);if(f&&f.x.doc===id){calSet(f.a.filter(function(x){return x.id!==d.ev}));if(f.x.gid)gapiQ("DELETE",CALU+"/"+encodeURIComponent(f.x.gid),null,function(){})}}docRender()}
+function docAddCard(){showAction({type:"card",key:"docadd",icon:"note",tone:"ask",title:"إضافة وثيقة",tag:"بطاقة صعود · حجز فندق · تذكرة",keep:true,
+  blocks:[{t:"opts",items:[{title:"الكاميرا",meta:"صوّر الوثيقة الآن"},{title:"من الصور",meta:"صورة أو لقطة شاشة محفوظة"},{title:"ملف PDF",meta:"من الملفات أو البريد"}],fn:function(ix){docPick(["#docCam","#docImg","#docPdf"][ix])}},
+    {t:"small",x:"تُحفظ على جوالك فقط، وتُرسل صورتها إلى Google AI لقراءة التفاصيل. لا ترفع جوازًا أو هوية أو بطاقة بنك."}]})}
+function docPick(sel){var el=$(sel);el.value="";el.click()}
+function docFail(msg){docBusy=false;showAction({type:"card",key:"docadd",icon:"warn",tone:"ask",tagTone:"ask",title:"ما انضافت الوثيقة",tag:msg,keep:true,go:"#",goText:"حاول مرة ثانية",fn:docAddCard})}
+function docIngest(file){if(docBusy)return;var pdf=file.type==="application/pdf"||/\.pdf$/i.test(file.name||"");
+  if(!pdf&&!/^image\//.test(file.type||"")&&!/\.(jpe?g|png|heic|heif|webp)$/i.test(file.name||""))return docFail("الملف ليس صورة ولا PDF");
+  if(file.size>(pdf?15:40)*1048576)return docFail("الملف كبير جدًا");
+  docBusy=true;closeCard();showAction({type:"card",key:"docadd",icon:"note",tone:"info",title:"أقرأ الوثيقة…",tag:"لحظات",skel:true,keep:true});
+  var id="D"+Date.now().toString(36)+Math.floor(Math.random()*900+100),pages=[],raw="";
+  fileData(file).then(function(u){if(!pdf)return shrink(u,2000).then(function(j){pages=[j]});raw=u;return pdfPages(b64buf(u.slice(u.indexOf(",")+1))).then(function(p){pages=p},function(){pages=[]})})
+  .then(function(){var parts=pages.length?pages.map(function(p){return {inlineData:{mimeType:"image/jpeg",data:p.slice(p.indexOf(",")+1)}}}):[{inlineData:{mimeType:"application/pdf",data:raw.slice(raw.indexOf(",")+1)}}];
+    return docRead(parts).then(function(j){return {j:j}},function(e){return {e:e&&e.message||"read"}})})
+  .then(function(r){if(r.j&&r.j.kind==="refused"){docBusy=false;showAction({type:"card",key:"docadd",icon:"warn",tone:"ask",tagTone:"ask",title:"ما أحفظ هذا النوع",tag:"لم تُحفظ",keep:true,blocks:[{t:"text",x:"الجوازات والهويات وبطاقات البنك لا تُحفظ في مساعد. أحفظ بطاقات الصعود وحجوزات الفنادق والتذاكر."}]});
+      if(live&&ready)sendText(isEn()?"(I uploaded an identity or bank document; the app did not keep it) Tell me in one short sentence.":"(رفعت وثيقة هوية أو بنك، والتطبيق ما حفظها) قوليها لي بجملة قصيرة.","وثيقة لم تُحفظ");return}
+    var keepPdf=raw&&(!pages.length||file.size<=6*1048576),d=docMake(id,r.j,pages.length,keepPdf,file.name);if(r.e)d.unread=r.e;
+    return Promise.all(pages.map(function(p,i){return dbPut(id+"/"+i,p)}).concat(keepPdf?[dbPut(id+"/pdf",raw)]:[])).then(function(res){
+      var a=docGet().filter(function(x){if(x.pend){docFiles(x,dbDel);return false}return true});a.push(d);docSet(a);docBusy=false;
+      if(res.indexOf("mem")>=0)toast("التخزين غير متاح في هذا المتصفح. الوثيقة باقية حتى تقفل التطبيق.");
+      docCard(d);if(live&&ready)sendText(isEn()?"(I uploaded a document and the app read it) "+JSON.stringify(docOut(d))+" Tell me the key details in one short sentence and ask if I want it saved. If I say yes call doc_confirm with save true; if no, with save false.":"(رفعت وثيقة والتطبيق قرأها) "+JSON.stringify(docOut(d))+" قولي لي أهم ما فيها بجملة قصيرة واسأليني: أحفظها؟ إذا قلت نعم استدعي doc_confirm مع save true، وإذا قلت لا مع save false.","وثيقة: "+d.title)})})
+  .catch(function(e){docFail(e&&e.message==="image"?"ما قدرت أفتح الصورة":"صار خطأ أثناء الحفظ")})}
+["#docCam","#docImg","#docPdf","#docAny"].forEach(function(s){$(s).addEventListener("change",function(){var f=this.files&&this.files[0];if(f)docIngest(f)})});
+function docWake(on){try{if(on&&navigator.wakeLock)navigator.wakeLock.request("screen").then(function(l){wakeL=l},function(){});else if(!on&&wakeL){wakeL.release();wakeL=null}}catch(e){}}
+function docOpen(id,i,back){var d=docFind(id);if(!d)return;i=i||0;var v=$("#docView"),show=function(){dvS={id:id,i:i,n:d.n||0,back:back||(dvS&&dvS.id===id&&dvS.back)};$("#dvTitle").textContent=d.title;$("#dvPg").textContent=d.n>1?(i+1)+" / "+d.n:"";$("#dvPrev").hidden=$("#dvNext").hidden=!(d.n>1);v.classList.remove("zoom");v.classList.add("on");docWake(true)};
+  if(d.n)return dbGet(id+"/"+i).then(function(src){if(!src)return toast("الصورة غير موجودة على هذا الجهاز");$("#dvPdf").hidden=true;$("#dvImg").hidden=false;$("#dvImg").src=src;show()});
+  return dbGet(id+"/pdf").then(function(u){if(!u)return toast("الملف غير موجود على هذا الجهاز");return fetch(u).then(function(r){return r.blob()}).then(function(b){$("#dvImg").hidden=true;$("#dvPdf").hidden=false;$("#dvPdf").src=URL.createObjectURL(b);show()})})}
+function docShut(){var s=dvS,v=$("#docView");v.classList.remove("on","zoom");$("#dvImg").removeAttribute("src");if(!$("#dvPdf").hidden){try{URL.revokeObjectURL($("#dvPdf").src)}catch(e){}$("#dvPdf").removeAttribute("src")}dvS=null;docWake(false);if(s&&s.back){var d=docFind(s.id);if(d)docCard(d)}}
+$("#dvClose").onclick=docShut;$("#dvImg").onclick=function(){$("#docView").classList.toggle("zoom")};
+$("#dvPrev").onclick=function(){if(dvS&&dvS.n>1)docOpen(dvS.id,(dvS.i-1+dvS.n)%dvS.n)};$("#dvNext").onclick=function(){if(dvS&&dvS.n>1)docOpen(dvS.id,(dvS.i+1)%dvS.n)};
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&dvS)docShut()});
+function docLeft(ms){var m=Math.max(0,Math.round(ms/60000)),h=Math.floor(m/60);m=m%60;return h?(h===1?"ساعة":h===2?"ساعتين":h+" ساعات")+(m?" و"+m+" د":""):m+" دقيقة"}
+function docAuto(d){var k=DK[d.kind]||DK.other,left=d.when-Date.now(),lab=d.kind==="boarding"?(d.allDay||left<=0?"رحلتك اليوم":"الإقلاع بعد "+docLeft(left)):d.kind==="hotel"?"الدخول اليوم":(d.allDay||left<=0?"موعدها اليوم":"تبدأ بعد "+docLeft(left));
+  docCard(d,{auto:lab});if(live&&ready)sendText(isEn()?"(Heads-up) "+d.title+": "+k[0]+" is on screen now, "+lab+". Tell me in one short sentence.":"(تنبيه) "+d.title+"، "+lab+". "+k[0]+" على الشاشة. قوليها لي بجملة قصيرة.",lab+": "+d.title)}
+function docTick(){var now=Date.now(),a=docGet(),ch=false,hit=null;a=a.filter(function(d){if(d.pend&&now-d.added>9e5&&!(curCard&&curCard._key==="doc|"+d.id)){docFiles(d,dbDel);ch=true;return false}return true});
+  a.forEach(function(d){if(d.pend||d.shown||!d.when)return;var from,to;
+    if(d.kind==="hotel"){from=Math.min(d.when,new Date(d.when).setHours(8,0,0,0));to=new Date(d.when).setHours(23,59,0,0)}
+    else if(d.allDay){from=d.when+5*36e5;to=d.when+24*36e5}
+    else{from=d.when-(d.kind==="boarding"?4:2)*36e5;to=d.when+36e5}
+    if(now>=from&&now<to){d.shown=1;ch=true;hit=hit||d}});
+  if(ch)docSet(a);if(hit&&!dvS&&!docBusy)docAuto(hit)}
+setInterval(docTick,20000);setTimeout(docTick,9000);
+function docRender(){var ul=$("#dcList");if(!ul)return;var l=docSorted(docGet().filter(function(x){return !x.pend}));
+  rows(ul,l,function(d){return d.title},function(d){return (DK[d.kind]||DK.other)[0]+(d.when?" · "+dDate(d):"")},function(d){var keep=d,gone=true;docSet(docGet().filter(function(x){return x.id!==d.id}));docRender();
+    toast("حُذفت: "+d.title,function(){gone=false;var a=docGet();a.push(keep);docSet(a);docRender()});setTimeout(function(){if(gone){var a=docGet();a.push(keep);docSet(a);docDrop(keep.id)}},9000)});
+  [].forEach.call(ul.children,function(li,ix){var t=li.querySelector(".tt");if(t){t.style.cursor="pointer";t.onclick=function(){docOpen(l[ix].id,0,false)}}})}
+$("#dcAdd").onclick=function(){docPick("#docAny")};
+TOOLS.doc_add=function(a,cb){docAddCard();cb({shown:true,note:"A card is on screen with three choices: camera, photo, PDF file. He must tap one; you cannot open the camera or the files yourself. Tell him in one short sentence to pick one. Passports, identity cards and bank cards are not kept."})};
+TOOLS.doc_confirm=function(a,cb){a=a||{};var p=docGet().filter(function(x){return x.pend}).pop();if(!p)return cb({error:"No uploaded document is waiting."});
+  if(a.save===false){if(curCard&&curCard._key==="doc|"+p.id)closeAction();docDrop(p.id);return cb({discarded:true})}
+  var d=docKeep(p.id);docCard(d);cb({saved:true,document:docOut(d),calendar:d.ev?"added to his calendar":"not added (no usable date and time on it)",stored:"on this phone only",note:"Say it is saved in one short sentence."})};
+TOOLS.doc_list=function(a,cb){var l=docSorted(docGet().filter(function(x){return !x.pend}));docListCard();cb({documents:l.map(docOut),stored:"on this phone only",note:"The list is on screen. Do not read codes aloud."})};
+TOOLS.doc_show=function(a,cb){a=a||{};var l=docGet().filter(function(x){return !x.pend});if(!l.length)return cb({found:false,note:"Nothing is saved yet. Offer to add one with doc_add."});
+  var m=docMatch(l,a);if(!m.length)return cb({found:false,documents:l.map(docOut)});
+  if(m.length>1&&!cS(a.query,80)&&!DK[a.kind]){docListCard();return cb({found:true,several:true,documents:m.map(docOut),note:"Several are saved; the list is on screen. Ask which one, or he taps it."})}
+  var d=m[0];docCard(d).then(function(){if(a.full===true)docOpen(d.id,0,true)});
+  cb({shown:true,full_screen:a.full===true,document:docOut(d),others:m.length-1,note:"It is on screen. Say one short sentence. Do not read the booking code aloud unless he asks."})};
+TOOLS.doc_update=function(a,cb){a=a||{};var all=docGet(),id=cS(a.id,40),d=id?all.filter(function(x){return x.id===id})[0]:all.filter(function(x){return x.pend}).pop()||all[all.length-1];if(!d)return cb({error:"document not found; get the id from doc_list"});
+  var n=0;if(DK[a.kind]){d.kind=a.kind;n++}DF.forEach(function(k){if(a[k]!=null){var v=cS(a[k],k==="notes"?140:60);if(v)d.f[k]=v;else delete d.f[k];n++}});if(!n)return cb({error:"give at least one field to change"});
+  delete d.unread;docWhen(d);d.title=docTitle(d);d.shown=0;
+  if(d.ev){var f=calFind(d.ev);if(f&&d.when){f.x.s=d.allDay?d.when+15*36e5:d.when;if(d.kind==="boarding"){f.x.mins=docDur(d);f.x.title=("رحلة "+(d.f.flight?d.f.flight+" ":"")+"إلى "+(d.f.to_city||d.f.to_code||"")).trim()}calSet(f.a);
+      if(f.x.gid){var t=evTimes(new Date(f.x.s),f.x.mins);gapiQ("PATCH",CALU+"/"+encodeURIComponent(f.x.gid),{start:t.start,end:t.end,summary:f.x.title},function(){})}}}
+  docSet(all);docRender();docCard(d);cb({ok:true,document:docOut(d)})};
+TOOLS.doc_delete=function(a,cb){var d=docFind(cS((a||{}).id,40));if(!d)return cb({error:"document not found; get the id from doc_list"});
+  showAction({type:"confirm",key:"docdel|"+d.id,title:"حذف الوثيقة؟",tag:"لا يمكن استرجاعها",tagTone:"danger",closeText:"تراجع",blocks:[{t:"kv",rows:[["الوثيقة",d.title],["النوع",(DK[d.kind]||DK.other)[0]]]}],go:"#",goText:"احذف",fn:function(){docDrop(d.id);toast("حُذفت: "+d.title)}});
+  cb({awaiting_user_confirmation:true,document:docOut(d),note:"A confirm card is on screen. It is deleted only if he taps Delete."})};
 
 /* ================= controls ================= */
 ["pointerdown","touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){if(ctx&&ctx.state!=="running")ctx.resume().catch(function(){})},true)});
