@@ -218,7 +218,7 @@ function callPrompt(c) {
     "Your task for this call: " + c.brief,
     "Rules:",
     "- Open with a greeting, say right away that you are an AI assistant calling on behalf of " + CFG.owner + ", then give the reason for the call in one sentence.",
-    "- Speak naturally in short sentences, as on a phone call. Match the other person's language.",
+    "- Speak naturally in short sentences, as on a phone call. Match the other person's language." + (c.dialect ? " Use this accent or dialect: " + c.dialect + "." : ""),
     "- Stay inside the task. Share nothing about " + CFG.owner + " beyond what the task contains.",
     "- Never pay, never give card numbers, passwords, ID numbers or verification codes, and never accept a financial commitment.",
     "- If asked something the task does not cover or that needs a decision, say you will check with " + CFG.owner + " and get back to them. Do not invent.",
@@ -234,7 +234,7 @@ function callPrompt(c) {
     "مهمتك في هذي المكالمة: " + c.brief,
     "القواعد:",
     "- ابدئي بالسلام، وعرّفي بنفسك فوراً إنك مساعدة ذكية (ذكاء اصطناعي) تتصلين بالنيابة عن " + CFG.owner + "، ثم قولي سبب الاتصال بجملة واحدة.",
-    "- تكلمي باللهجة السعودية بجمل قصيرة وطبيعية مثل أي مكالمة. وإذا رد عليك أحد بلغة ثانية كمّلي بلغته.",
+    "- تكلمي " + (c.dialect ? "بهذي اللهجة: «" + c.dialect + "»" : "باللهجة السعودية") + " بجمل قصيرة وطبيعية مثل أي مكالمة. وإذا رد عليك أحد بلغة ثانية كمّلي بلغته.",
     "- التزمي بالمهمة فقط. لا تعطين أي معلومة عن " + CFG.owner + " غير الموجودة في المهمة.",
     "- لا تدفعين، ولا تعطين أرقام بطاقات أو كلمات سر أو أرقام هوية أو رموز تحقق، ولا توافقين على أي التزام مالي.",
     "- إذا سُئلتِ عن شي مو موجود في المهمة أو يحتاج قرار، قولي إنك بتتأكدين من " + CFG.owner + " وترجعين لهم. لا تخترعين.",
@@ -355,6 +355,7 @@ const server = http.createServer(async (req, res) => {
         name: String(b.name || "").trim().slice(0, 80), lang: b.lang === "en" ? "en" : "ar",
         voice: /^[A-Za-z]{2,30}$/.test(String(b.voice || "")) ? String(b.voice) : "Kore",
         now: String(b.now || new Date().toISOString()).slice(0, 120),
+        dialect: String(b.dialect || "").replace(/[\r\n"«»]/g, " ").trim().slice(0, 40),
         status: "starting", created: Date.now(), transcript: [], cur: null, result: null
       };
       calls.set(c.id, c); dayCount++;
