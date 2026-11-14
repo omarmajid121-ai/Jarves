@@ -55,7 +55,6 @@ body.muted .live{display:none}
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;transition:opacity .25s ease}
 #chips{position:fixed;z-index:4;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 118px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;transition:opacity .25s ease}
 .chip{height:40px;padding:0 16px;border-radius:20px;color:#fff;font-size:15px;transition:transform .32s var(--spring)}
-body[data-mode=speak] #chips,body[data-mode=connect] #chips{opacity:0;pointer-events:none}
 .tool{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);display:flex;align-items:center;gap:20px;padding:8px;border-radius:40px;transition:opacity .25s ease}
 .tool button{width:56px;height:56px;border-radius:28px;border:0;background:transparent;color:#fff;display:grid;place-items:center;padding:0;transition:transform .32s var(--spring),background-color .3s ease,opacity .3s ease}
 .tool #micBtn{width:64px;height:64px;border-radius:32px;background:#fff;color:#000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
@@ -206,7 +205,7 @@ button.tile:active{transform:scale(.97)}
 </header>
 <div id="caption" aria-live="polite"></div>
 <div id="chips">
-  <button class="chip gl" id="briefChip">ملخص اليوم</button>
+  <button class="chip gl" id="briefChip">بطاقات اليوم</button>
   <button class="chip gl" data-say="كيف محفظتي؟">كيف محفظتي؟</button>
   <button class="chip gl" data-say="وش الطقس الحين؟">الطقس الآن</button>
 </div>
@@ -218,7 +217,7 @@ button.tile:active{transform:scale(.97)}
 <div id="toast" class="gl" role="status"><span class="ok" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span id="toastT"></span><button id="toastU" type="button">تراجع</button></div>
 
 <section id="brief" aria-label="ملخص اليوم">
-  <div class="bh"><button class="gb gl" id="briefClose" aria-label="رجوع"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button><span id="bDate"></span><button class="gb gl" id="briefRe" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6"></path></svg></button></div>
+  <div class="bh"><button class="gb gl" id="briefClose" style="width:auto;padding:0 14px 0 16px;display:flex;align-items:center;gap:4px;font-size:15px;font-weight:600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg><span>رجوع</span></button><span id="bDate"></span><button class="gb gl" id="briefRe" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6"></path></svg></button></div>
   <h1 id="bHello"></h1>
   <p id="bSum" aria-live="polite"></p>
   <div class="tiles" id="tiles"></div>
@@ -330,7 +329,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.6",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.7",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -524,7 +523,7 @@ function promptEn(){
   (name?"The user's name is "+name+".\n":"")+
   "Current local time: "+nowText()+".\n"+locLine(true)+
   "For anything current (weather, news, prices, prayer times, opening hours, places) use Google search when available, and be accurate. If you need his location and it is not given above, call get_location.\n"+
-  "When he asks for his daily brief, the weather or prayer times, call show_brief and use only the data it returns.\n"+
+  "For weather or prayer-time questions call today_data and answer by voice from it. Call show_brief only when he asks for his daily brief or to see the cards.\n"+
   "Portfolio: when he says he bought or sold shares, or sets a price target, call portfolio_update at once and confirm in one sentence. When he asks about his portfolio or a stock he holds, search Google for the latest price, then call show_portfolio with the quotes you found, and tell him the price, his gain or loss against his cost, and the distance to his target. Say prices may be delayed. Never recommend buying, selling or holding and never predict prices; if he asks whether to buy or sell, say the decision is his and give facts only. Use the same stock name already in the portfolio.\n"+pfLine(true)+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
@@ -537,7 +536,7 @@ function prompt(){
   (name?"اسم صاحبك: "+name+". ناديه باسمه أحياناً.\n":"")+
   "الوقت الآن عنده: "+nowText()+".\n"+locLine(false)+
   "أي معلومة حالية (طقس، أخبار، أسعار، مواقيت صلاة، أوقات دوام، أماكن) ابحثي عنها في قوقل إذا متاح، وكوني دقيقة. وإذا احتجتي موقعه وما هو مذكور فوق، استخدمي get_location.\n"+
-  "إذا طلب ملخص يومه أو الطقس أو مواقيت الصلاة، استخدمي show_brief وخذي منها المعلومات الدقيقة وقوليها باختصار.\n"+
+  "إذا سأل عن الطقس أو مواقيت الصلاة استخدمي today_data وجاوبيه بصوتك منها. واستخدمي show_brief فقط إذا طلب ملخص يومه أو طلب يشوف البطاقات.\n"+
   "المحفظة: إذا قال إنه شرى أو باع أسهم أو حدد هدف سعر، استخدمي portfolio_update على طول وأكدي له بجملة. وإذا سأل عن محفظته أو عن سهم عنده، ابحثي في قوقل عن آخر سعر، ثم استخدمي show_portfolio ومرري الأسعار اللي لقيتيها، وقولي له السعر وربحه أو خسارته عن سعر شرائه وكم باقي على هدفه. نبهيه إن الأسعار ممكن تكون متأخرة. ممنوع تعطين توصية شراء أو بيع أو تتوقعين سعر؛ وإذا سألك «أبيع ولا أشتري؟» قولي إن القرار له وأعطيه الحقائق بس. استخدمي نفس اسم السهم الموجود في المحفظة.\n"+pfLine(false)+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
@@ -586,7 +585,8 @@ function setupMsg(){
       number:{type:"STRING",description:"Phone number with digits only"},text:{type:"STRING",description:"Message body"},place:{type:"STRING",description:"Destination, for maps"},
       title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}},
     {name:"get_location",description:"Get the user's current city and coordinates. Call it only when the answer needs his location: weather, prayer times, nearby places, directions, local time elsewhere. The phone asks his permission the first time."},
-    {name:"show_brief",description:"Open the user's Today screen (weather, prayer times, portfolio cards) and get the exact data back. Call it when he asks for his daily brief, the weather, or prayer times, then say it briefly."},
+    {name:"today_data",description:"Get exact weather, prayer times, next events and unread email for his location, without opening any screen. Use it for questions about the weather or prayer times."},
+    {name:"show_brief",description:"Open the Today cards screen and get its data back. Call it only when he asks for his daily brief or asks to see the cards."},
     {name:"portfolio_update",description:"Save a change to the user's stock portfolio on this device. Call it whenever he says he bought or sold shares, wants a holding removed, or sets a price target.",
       parameters:{type:"OBJECT",properties:{action:{type:"STRING",enum:["buy","sell","remove","set_target"]},name:{type:"STRING",description:"Company or stock name; reuse the name already in the portfolio"},
         symbol:{type:"STRING",description:"Ticker or Tadawul code, if known"},shares:{type:"NUMBER"},price:{type:"NUMBER",description:"Price per share he paid or got"},target:{type:"NUMBER",description:"His target price, for set_target"}},required:["action","name"]}},
@@ -740,7 +740,7 @@ function renderBrief(){var o=locObj(),np=nextPrayer(),T=$("#tiles"),e,v,a,tc=0,t
   T.textContent="";
   e=tile("sun","#FFC56B",o&&o.city?o.city:"الطقس",false,!o);
   if(!o){line(e,"tv","—");line(e,"ts","اسمح بالموقع لعرض الطقس ومواقيت الصلاة");e.onclick=function(){BR.t=0;getLoc(function(){loadBrief()},true)}}
-  else if(BR.w){line(e,"tv",Math.round(BR.w.t)+"°");line(e,"ts",wx(BR.w.c)+" · العظمى "+Math.round(BR.w.hi)+"° · الصغرى "+Math.round(BR.w.lo)+"°");sum.push("الطقس "+wx(BR.w.c)+" و"+Math.round(BR.w.t)+"°")}
+  else if(BR.w){line(e,"tv",Math.round(BR.w.t)+"°");line(e,"ts",wx(BR.w.c));line(e,"ts","العظمى "+Math.round(BR.w.hi)+"° · الصغرى "+Math.round(BR.w.lo)+"°");sum.push("الطقس "+wx(BR.w.c)+" و"+Math.round(BR.w.t)+"°")}
   else if(BR.busy){v=document.createElement("i");v.className="sk";e.appendChild(v)}
   else{line(e,"tv","—");line(e,"ts","تعذّر تحميل الطقس")}
   T.appendChild(e);
@@ -754,7 +754,7 @@ function renderBrief(){var o=locObj(),np=nextPrayer(),T=$("#tiles"),e,v,a,tc=0,t
     e.appendChild(v);T.appendChild(e)}
   a=pfGet();all=a.length>0;a.forEach(function(h){tc+=(h.cost||0)*h.shares;if(h.last)tv+=h.last*h.shares;else all=false});
   e=tile("chart","#30D158","محفظتك",false,true);
-  if(a.length){line(e,"tv",fmt(Math.round(all?tv:tc)));line(e,"ts","ر.س · "+(all?"بآخر سعر":"تكلفة الشراء")+" · "+a.length+" شركات")}
+  if(a.length){line(e,"tv",fmt(Math.round(all?tv:tc)));line(e,"ts","ر.س · "+(all?"بآخر سعر":"تكلفة الشراء")+" · "+(a.length===1?"شركة واحدة":a.length===2?"شركتان":a.length<11?a.length+" شركات":a.length+" شركة"))}
   else{line(e,"tv","—");line(e,"ts","قل: «شريت ٥٠ سهم الراجحي على ٩٤»")}
   e.onclick=function(){closeBrief();openCard("pf")};T.appendChild(e);
   e=tile("news","#FF9F7A","الأخبار",false,true);line(e,"tv","اليوم");line(e,"ts","اطلب أهم العناوين بصوتها");e.onclick=function(){closeBrief();sendText(isEn()?"What are today's top headlines? Show them to me.":"وش أهم أخبار اليوم؟ اعرضيها لي","أخبار اليوم")};T.appendChild(e);
@@ -782,6 +782,7 @@ TOOLS.show_action=function(a,cb){a=a||{};var o={type:{call:1,sms:1,whatsapp:1,ma
 TOOLS.get_location=function(a,cb){$("#state").textContent="أحدد موقعك…";getLoc(function(){var o=locObj();if(live)$("#state").textContent=LABEL[mode];
   cb(o?{city:o.city||"",region:o.region||"",country:o.country||"",latitude:+o.lat.toFixed(3),longitude:+o.lon.toFixed(3)}:{available:false,reason:"Location permission was not given or is unavailable. Ask him for his city instead."})})};
 TOOLS.show_brief=function(a,cb){openBrief(cb)};
+TOOLS.today_data=function(a,cb){loadBrief(cb)};
 TOOLS.portfolio_update=function(a,cb){cb(pfUpdate(a))};
 TOOLS.show_portfolio=function(a,cb){cb(showPortfolio(a))};
 function lsArr(k){try{var a=JSON.parse(get(k)||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
