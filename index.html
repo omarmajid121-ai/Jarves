@@ -227,7 +227,7 @@ body[data-act=confirm] #actGo{background:#FF453A;color:#fff}
 #act.stk::before{content:"";position:absolute;left:24px;right:24px;top:-10px;height:10px;border-radius:18px 18px 0 0;background:rgba(70,70,80,.6);border:1px solid rgba(255,255,255,.12);border-bottom:0}
 #sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box;border-radius:34px 34px 0 0;padding:10px 18px calc(env(safe-area-inset-bottom) + 18px);display:flex;flex-direction:column;gap:14px;background:rgba(28,28,32,.9);border:1px solid rgba(255,255,255,.12);border-bottom:0;-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%);box-shadow:0 -18px 50px rgba(0,0,0,.55);transform:translateY(105%);visibility:hidden;transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s .5s}
 #sheet.on{transform:none;visibility:visible;transition:transform .5s cubic-bezier(.32,.72,0,1)}
-#sheetGrab{width:64px;height:22px;border:0;background:none;padding:0;align-self:center;flex:none;display:grid;place-items:center}
+#sheetGrab{position:relative;width:64px;height:22px;border:0;background:none;padding:0;align-self:center;flex:none;display:grid;place-items:center}
 #sheetGrab::before{content:"";width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.3)}
 #sheetTitle{font-size:20px;line-height:26px;font-weight:700;overflow-wrap:anywhere}
 #sheetTag{font-size:13px;line-height:18px;color:var(--label2)}
@@ -291,6 +291,8 @@ body[data-act=confirm] #actGo{background:#FF453A;color:#fff}
 .cb-note b{display:block;color:#FFD60A;font-weight:700}
 .cb-small{font-size:12px;line-height:17px;color:rgba(235,235,245,.45);text-align:center;margin:0}
 #actBlocks{max-height:56vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#actBlocks.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 44px),transparent);mask-image:linear-gradient(#000 calc(100% - 44px),transparent)}
+#sheetGrab::after{content:"";position:absolute;left:-44px;right:-44px;top:-10px;bottom:-14px}
 #panePf{overflow-y:auto;-webkit-overflow-scrolling:touch;gap:10px}
 #pfSum{font-size:15px;color:var(--label2);padding:0 16px}
 .pfi .tt{flex:1;min-width:0;display:flex;flex-direction:column;padding:8px 0}
@@ -443,6 +445,7 @@ button.tile:active{transform:scale(.97)}
     <div class="pane settings" id="paneSet">
       <p class="ghdr">الحالة</p>
       <div class="group"><div id="diag" style="padding:12px 16px;font-size:15px;line-height:24px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text"></div></div>
+      <div class="group"><button class="cell plain" id="lmBtn" type="button">الرجوع للنموذج الصوتي السابق</button></div>
       <p class="gftr">إذا لم تعمل الأوامر، أرسل صورة لهذا المربع.</p>
       <p class="ghdr" style="margin-top:0">مفتاح التفعيل</p>
       <div class="group">
@@ -514,9 +517,9 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.16",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-14.17",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
-var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal"};
+var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
@@ -743,14 +746,14 @@ function showAction(a){
       if(acOn()&&why&&e164(num))alt={t:"خلّيها تتصل وتتكلم عني",fn:function(){acRun({name:name||num,to:e164(num),brief:why})}}}else{body="لم يُحدَّد رقم الهاتف.";tag="يتطلب رقمًا";tagTone="ask"}}
   else if(type==="sms"){title=name?"رسالة إلى "+name:"رسالة نصية";if(text)blocks.push({t:"bubble",x:text});else body="لم يُحدَّد نص الرسالة.";if(num){go="sms:"+num+"&body="+encodeURIComponent(text);goText="فتح الرسائل";tag="جاهزة · أنت ترسل";real=true}else{tag="يتطلب رقمًا";tagTone="ask"}}
   else if(GEN[type]){title=cS(a.title,90);tag=cS(a.tag,90);body=String(a.body||"");go=a.go||"";goText=a.goText||"";real=!!go}
-  else if(type==="whatsapp"){title=name?"واتساب إلى "+name:"رسالة واتساب";if(text)blocks.push({t:"bubble",x:text});if(num){go="https://wa.me/"+num.replace(/\D/g,"")+(text?"?text="+encodeURIComponent(text):"");goText="افتح واتساب";tag="جاهزة · أنت ترسل";real=true}else{tag="يتطلب رقمًا";tagTone="ask";if(!text)body="لم يُحدَّد رقم."}}
+  else if(type==="whatsapp"){title=name?"واتساب إلى "+name:"رسالة واتساب";if(text)blocks.push({t:"bubble",x:text});if(num){go="https://wa.me/"+(e164(num)||num).replace(/\D/g,"")+(text?"?text="+encodeURIComponent(text):"");goText="افتح واتساب";tag="جاهزة · أنت ترسل";real=true}else{tag="يتطلب رقمًا";tagTone="ask";if(!text)body="لم يُحدَّد رقم."}}
   else if(type==="maps"){var place=cS(a.place||a.text||name,140);title="الاتجاهات";body=place||"لم تُحدَّد الوجهة.";if(place){go="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(place);goText="افتح الخرائط";tag="خرائط Google";real=true}}
   else if(type==="pf"){title="محفظتك";tag=cS(a.tag,90);body=String(a.body||"");go="#";goText="فتح المحفظة"}
   else if(type==="email"){title="البريد الوارد";tag="عرض تجريبي";body="البريد غير مرتبط بعد. سيظهر هنا ملخص رسائلك عند الربط."}
   else{title=cS(a.title||"اجتماع",80);tag="عرض تجريبي";body=[a.when?"الموعد: "+cS(a.when,80):"",name?"مع: "+name:"","التقويم غير مرتبط بعد."].filter(Boolean).join("\n")}
   var key=a.key||(type+"|"+title),box=$("#act"),shown=box.classList.contains("on");
   if(shown&&curCard&&curCard._key!==key&&curCard._stack&&!a._restore){cardStack.push(curCard);if(cardStack.length>3)cardStack.shift()}
-  a._key=key;a._ts=a._ts||Date.now();a._stack=!a.info&&!a.skel&&(!!go||!!a.fn||!!alt);curCard=a;actInfo=!!a.info;delete a._restore;
+  a._key=key;a._ts=a._ts||Date.now();a._stack=!a.info&&!a.skel&&(!!go||!!a.fn||!!alt||blocks.some(function(b){return !!b&&!!b.fn&&(b.t==="chips"||b.t==="opts")}));curCard=a;actInfo=!!a.info;delete a._restore;
   goFn=a.fn||null;altFn=alt?alt.fn:null;secFn=a.second?a.second.fn:null;cIcon($("#actIc"),icon);box.dataset.tone=tone;
   $("#actTitle").textContent=title;$("#actTag").textContent=tag;$("#actTag").dataset.tone=tagTone;
   var bx=$("#actBlocks");bx.textContent="";blocks.forEach(function(b){bx.appendChild(blk(b,false))});
@@ -760,8 +763,11 @@ function showAction(a){
   box.classList.toggle("has2",!!go&&!!a.second);
   var n=cardStack.length;$("#actCount").hidden=!n;$("#actCount").textContent=n?(n+1)+" بطاقات":"";box.classList.toggle("stk",n>0);
   PAL.card=PAL.card||PAL.meeting||PAL.idle;act={type:type,vis:type==="card"?"card":(VIS[type]||type),t0:performance.now()/1000};box.classList.add("on");document.body.classList.add("acting");document.body.dataset.act=type;
+  bx.scrollTop=0;moreCue();setTimeout(moreCue,120);setTimeout(moreCue,900);
   clearTimeout(actT);if(!a.keep)actT=setTimeout(closeAction,a.info?22000:30000);
   return {shown:true,ready_for_user_tap:real,note:real?"A card is on screen; the user taps it to confirm.":(type==="call"||type==="sms")?"Shown without a phone number; ask for the number.":"The card is on screen."}}
+function moreCue(){var b=$("#actBlocks");b.classList.toggle("more",b.scrollHeight-b.scrollTop-b.clientHeight>10)}
+$("#actBlocks").addEventListener("scroll",moreCue,{passive:true});
 function closeAction(){clearTimeout(actT);clearInterval(typeT);curCard=null;actInfo=false;goFn=altFn=secFn=null;var p=null;
   while(cardStack.length){p=cardStack.pop();if(Date.now()-p._ts<180000)break;p=null}
   if(p){p._restore=true;p.typed=false;showAction(p);return}
@@ -866,6 +872,7 @@ function startMic(){
 var hot=0,floor=0.01,bargeT=null;
 
 /* ================= session ================= */
+function modelPick(){var v=null;try{v=JSON.parse(get(K.lm)||"null")}catch(e){}return v&&v.m==="old"&&(v.why==="user"||Date.now()-(+v.t||0)<864e5)?MODEL_OLD:MODEL_NEW}
 function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
@@ -884,6 +891,7 @@ function setupMsg(){
         symbol:{type:"STRING",description:"Ticker or Tadawul code, if known"},shares:{type:"NUMBER"},price:{type:"NUMBER",description:"Price per share he paid or got"},target:{type:"NUMBER",description:"His target price, for set_target"}},required:["action","name"]}},
     {name:"show_portfolio",description:"Show the user's portfolio card on screen and get his holdings back. Pass the latest prices you found by search so the card can show value and gain.",
       parameters:{type:"OBJECT",properties:{quotes:{type:"ARRAY",items:{type:"OBJECT",properties:{name:{type:"STRING"},price:{type:"NUMBER"}},required:["name","price"]}}}}}].concat(XDECL)}];
+  if(s.tools&&MODEL===MODEL_NEW)s.tools[0].functionDeclarations=s.tools[0].functionDeclarations.map(function(f){f=Object.assign({},f);f.behavior="BLOCKING";return f});
   if(attempt===0&&s.tools)s.tools.unshift({googleSearch:{}});
   return {setup:s}}
 function connect(){
@@ -897,6 +905,7 @@ function connect(){
   ws.onclose=function(ev){
     if(!live)return;
     if(!ready)DG.errs.push("#"+attempt+" "+ev.code+" "+String(ev.reason||"").slice(0,180));
+    if(!ready&&MODEL===MODEL_NEW&&attempt>=1&&ev.reason&&!/API key|key not valid|unauth|quota|exhaust|rate/i.test(ev.reason)){set(K.lm,JSON.stringify({m:"old",why:"auto",t:Date.now(),err:String(ev.reason).slice(0,120)}));MODEL=MODEL_OLD;attempt=0;connect();return}
     if(!ready&&attempt<3&&!/API key|key not valid|unauth/i.test(ev.reason||"")){attempt++;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
     stop();
@@ -926,7 +935,7 @@ function start(){
   if(live)return;
   if(!get(K.key)){openCard("set");return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}
-  live=true;userEnded=false;attempt=0;DG.errs=[];DG.lvl=-1;setMode("connect");$("#caption").textContent="";
+  live=true;userEnded=false;attempt=0;MODEL=modelPick();DG.errs=[];DG.lvl=-1;setMode("connect");$("#caption").textContent="";
   try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("تعذّر تشغيل الصوت في هذا المتصفح.");return}
   buildGraph();ctx.resume().catch(function(){});
   try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
@@ -945,7 +954,7 @@ function stop(){
 
 /* ================= portfolio ================= */
 function fmt(n){return (Math.round(n*100)/100).toLocaleString("en-US",{maximumFractionDigits:2})}
-function pfGet(){try{var a=JSON.parse(get(K.pf)||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function pfGet(){try{var a=JSON.parse(get(K.pf)||"[]");return Array.isArray(a)?a.filter(function(x){return !!x&&typeof x==="object"&&typeof x.name==="string"}):[]}catch(e){return []}}
 function pfSet(a){set(K.pf,JSON.stringify(a.slice(0,60)))}
 function pfKey(x){return String(x||"").trim().toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[\u0623\u0625\u0622]/g,"\u0627").replace(/\u0629/g,"\u0647").replace(/\u0649/g,"\u064A").replace(/\s+/g," ")}
 function pfFind(a,name,sym){var kn=pfKey(name),ks=pfKey(sym),i,x;
@@ -965,7 +974,7 @@ function pfUpdate(p){p=p||{};var a=pfGet(),prev=pfGet(),ac=String(p.action||"buy
     if(i<0){a.push({name:name||sym,symbol:sym,shares:sh,cost:pr,target:0,t:Date.now()});h=a[a.length-1]}
     else{h=a[i];var tot=h.shares+sh;h.cost=(pr>0&&h.cost>0)?(h.cost*h.shares+pr*sh)/tot:(h.cost||pr);h.shares=tot;if(sym&&!h.symbol)h.symbol=sym}
     msg="أضفتُ: "+fmt(sh)+" سهم "+h.name+(pr?" على "+fmt(pr):"")}
-  else if(ac==="sell"){if(i<0)return {ok:false,error:"not in the portfolio",holdings:pfBrief(a)};h=a[i];
+  else if(ac==="sell"){if(i<0)return {ok:false,error:"not in the portfolio",holdings:pfBrief(a)};h=a[i];if(sh>h.shares)return {ok:false,error:"he holds only "+fmt(h.shares)+" shares of "+h.name+"; ask him whether to sell all of them",holdings:pfBrief(a)};
     if(sh<=0||sh>=h.shares){a.splice(i,1);msg="بِيع كامل: "+h.name}else{h.shares-=sh;msg="بِيع: "+fmt(sh)+" سهم "+h.name}}
   else if(ac==="remove"){if(i<0)return {ok:false,error:"not in the portfolio",holdings:pfBrief(a)};msg="حُذف: "+a[i].name;a.splice(i,1)}
   else if(ac==="set_target"){if(i<0)return {ok:false,error:"not in the portfolio; add the holding first",holdings:pfBrief(a)};a[i].target=tg;msg=tg?"هدف "+a[i].name+": "+fmt(tg):"أُلغي هدف "+a[i].name}
@@ -1083,10 +1092,12 @@ TOOLS.show_brief=function(a,cb){openBrief(cb)};
 TOOLS.today_data=function(a,cb){loadBrief(function(d){var sh=a&&a.show,o=locObj(),np;
   if(sh==="weather"&&BR.w)showAction({type:"card",key:"wx",icon:"weather",tone:"info",info:true,title:((o&&(o.city||o.region))||"الطقس")+" الآن",tag:wx(BR.w.c),blocks:[{t:"big",v:Math.round(BR.w.t)+"°",u:"مئوية",note:"العظمى "+Math.round(BR.w.hi)+"°\nالصغرى "+Math.round(BR.w.lo)+"°"}]});
   else if(sh==="prayer"&&BR.p){np=nextPrayer();showAction({type:"card",key:"pray",icon:"prayer",tone:"info",info:true,title:np?"صلاة "+np.name:"مواقيت الصلاة",tag:np?left(np.left):"",blocks:[{t:"strip",items:PRN.map(function(x,i){var m=hm(BR.p[x[0]]);return [x[1],m<0?"":t12(m).replace(/ [صم]$/,""),!!np&&np.i===i]})}]})}
+  if(sh==="weather"&&!BR.w)d.weather="unavailable: the weather service did not answer. Tell him so; do not guess.";if(sh==="prayer"&&!BR.p)d.prayer_times="unavailable: the prayer-times service did not answer. Tell him so; do not guess.";
   cb(d)})};
 TOOLS.portfolio_update=function(a,cb){cb(pfUpdate(a))};
 TOOLS.show_portfolio=function(a,cb){cb(showPortfolio(a))};
-function lsArr(k){try{var a=JSON.parse(get(k)||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function okRec(x){return !!x&&typeof x==="object"&&!Array.isArray(x)}
+function lsArr(k){try{var a=JSON.parse(get(k)||"[]");return Array.isArray(a)?a.filter(okRec):[]}catch(e){return []}}
 var GSCOPE="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/contacts.readonly";
 var GID_DEFAULT="",CALU="https://www.googleapis.com/calendar/v3/calendars/primary/events",GMU="https://gmail.googleapis.com/gmail/v1/users/me/",TKU="https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
 function gid(){return (get(K.gid)||GID_DEFAULT).trim()}
@@ -1109,7 +1120,7 @@ function gapi(method,url,body,cb){var t=gtok();if(!t){needG();cb({error:"google_
       cb({error:"google_error",status:x.st,message:String((x.j&&x.j.error&&x.j.error.message)||"").slice(0,200)},null)})
     .catch(function(){cb({error:"network_error"},null)})}
 function evBrief(e){return {id:e.id,title:e.summary||"",start:(e.start&&(e.start.dateTime||e.start.date))||"",end:(e.end&&(e.end.dateTime||e.end.date))||"",location:e.location||"",with:(e.attendees||[]).slice(0,6).map(function(x){return x.displayName||x.email})}}
-function pDate(x){var v=String(x||"").trim();if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v))v+=":00";return new Date(v)}
+function pDate(x){var m=/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.exec(String(x||"").trim());if(!m)return new Date(NaN);var h=+(m[4]||0),mi=+(m[5]||0),d=new Date(+m[1],+m[2]-1,+m[3],h,mi,0);return d.getMonth()!==+m[2]-1||d.getDate()!==+m[3]||h>23||mi>59?new Date(NaN):d}
 function evTimes(s,mins){return {start:{dateTime:locISO(s),timeZone:TZ},end:{dateTime:locISO(new Date(s.getTime()+mins*60000)),timeZone:TZ}}}
 function whenText(d){try{return d.toLocaleString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long",hour:"numeric",minute:"2-digit"})}catch(e){return locISO(d)}}
 /* ---------- calendar: kept on the phone, mirrored to Google Calendar when it is connected ---------- */
@@ -1142,8 +1153,10 @@ function calSave(o,label,cb){var s=o.s.getTime(),c;
 TOOLS.calendar_list=function(a,cb){a=a||{};var f=a.from?pDate(a.from):new Date();if(isNaN(f))f=new Date();var days=Math.min(31,Math.max(1,+a.days||2));
   calAll(f.getTime(),f.getTime()+days*864e5,function(ev){cb({events:ev,time_zone:TZ,stored:calStored()})})};
 TOOLS.calendar_add=function(a,cb){a=a||{};var title=cS(a.title,200),s=pDate(a.start);if(!title||isNaN(s))return cb({error:"title and a valid start like 2026-11-15T16:00 are required"});
+  if(a.allow_past!==true&&s.getTime()<Date.now()-300000)return cb({saved:false,past:true,error:"That time is already in the past; now is "+locISO(new Date()).slice(0,16)+". Check the date with him. Call again with allow_past true only if he really wants a past record."});
   calSave({title:title,s:s,mins:Math.min(1440,Math.max(5,+a.minutes||60)),kind:kindOf(title,a.kind),loc:cS(a.location,200),notes:cS(a.notes,2000),allow:!!a.allow_clash},"أُضيف للتقويم",cb)};
 TOOLS.reminder_add=function(a,cb){a=a||{};var text=cS(a.text,200),s=pDate(a.at);if(!text||isNaN(s))return cb({error:"text and a valid time like 2026-11-15T16:00 are required"});
+  if(s.getTime()<Date.now()-300000)return cb({saved:false,past:true,error:"That time has already passed; now is "+locISO(new Date()).slice(0,16)+". Ask him for a time that is still ahead."});
   calSave({title:text,s:s,mins:10,kind:"reminder"},"تذكير "+whenText(s),cb)};
 function calFind(id){var a=calGet(),i;for(i=0;i<a.length;i++)if(a[i].id===id)return {a:a,i:i,x:a[i]};return null}
 TOOLS.calendar_update=function(a,cb){a=a||{};var raw=cS(a.event_id,200);if(!raw)return cb({error:"event_id is required; get it from calendar_list"});
@@ -1204,6 +1217,7 @@ TOOLS.show_flights=function(a,cb){a=a||{};var fc=cS(a.from_code,4).toUpperCase()
     if(legs.length<2)return cb({error:"a multi-city trip needs at least two legs"});var bl=[{t:"opts",items:legs}],rw=[];if(cS(a.total,14))rw.push(["الإجمالي",cS(a.total,14)+" "+cur]);if(pax)rw.push(["المسافرون",pax]);if(rw.length)bl.push({t:"kv",rows:rw});bl.push({t:"small",x:SRCNOTE});
     showAction({type:"card",key:"flights|multi",icon:"route",tone:"open",title:"رحلة بـ "+legs.length+" محطات",tag:cS(a.date,40)||"عدة مدن",blocks:bl,go:"https://www.google.com/travel/flights",goText:"افتحي الحجز",keep:true});
     return cb({shown:true,note:"The multi-city card is on screen. Say the route and total briefly. He books and pays himself."})}
+  if(!fcy||!tcy)return cb({error:"from and to are required: give from_code or from_city, and to_code or to_city"});
   var ops=cArr(a.options).slice(0,10).map(function(o){o=o||{};return o}).filter(function(o){return cS(o.depart_time,12)&&cS(o.arrive_time,12)});
   if(!ops.length)return cb({error:"options are required: use only flights you actually found by searching; if you found none, tell him and show nothing"});
   var row=function(o,ix,on){var r=Object.assign({n:ix+1,title:cS(o.depart_time,12)+" ← "+cS(o.arrive_time,12),meta:[cS(o.airline,24),cS(o.duration,20),cS(o.stops,24)].filter(Boolean).join(" · "),price:money(o.price),unit:cur,on:!!on},fTag(o));
@@ -1216,10 +1230,13 @@ TOOLS.show_flights=function(a,cb){a=a||{};var fc=cS(a.from_code,4).toUpperCase()
       if(trip==="round"&&cS(o.return_depart_time,12))bl.push({t:"ticket",from:tc||tcy,fromCity:tc?tcy:"",dep:cS(o.return_depart_time,12),to:fc||fcy,toCity:fc?fcy:"",arr:cS(o.return_arrive_time,12),dur:"",stops:cS(o.return_stops,24),fields:[]});
       var rw=[];if(money(o.price))rw.push(["السعر",money(o.price)+" "+cur+(trip==="round"?" للرحلتين":"")]);if(cS(a.searched_at,30))rw.push(["آخر تحديث",cS(a.searched_at,30)]);if(rw.length)bl.push({t:"kv",rows:rw});bl.push({t:"small",x:SRCNOTE});
       showAction({type:"card",key:key,icon:"plane",tone:"open",title:"اخترت الخيار "+(ix+1),tag:[cS(o.airline,24),date].filter(Boolean).join(" · "),blocks:bl,go:link,goText:"افتح صفحة الحجز",keep:true,second:{t:"غيّري الخيار",fn:function(){list(-1)}}})},
-    more=function(){openSheet({icon:"plane",tone:"open",title:"كل الرحلات · "+head,tag:ops.length+" رحلات",blocks:[{t:"opts",items:ops.map(function(o,ix){return row(o,ix,false)}),fn:function(ix){closeSheet();pick(ix)}},{t:"small",x:SRCNOTE}],go:link,goText:"افتحي الحجز"})},
-    list=function(sel){showAction({type:"card",key:key,icon:trip==="round"?"route":"plane",tone:"open",tagTone:"ask",title:head,tag:"قل رقم الخيار أو اضغطه",keep:true,blocks:[{t:"text",x:sub},{t:"opts",items:ops.slice(0,3).map(function(o,ix){return row(o,ix,ix===sel)}),fn:pick},{t:"small",x:SRCNOTE}],
-      go:link,goText:"افتحي الحجز",second:ops.length>3?{t:"خيارات أكثر · "+ops.length,fn:more}:null})};
-  var ch=+a.chosen||0;if(ch>=1&&ch<=ops.length)pick(ch-1);else list(-1);
+    more=function(){openSheet({icon:"plane",tone:"open",title:"كل الرحلات · "+head,tag:ops.length+" رحلات",blocks:[{t:"opts",items:ops.map(function(o,ix){return row(o,ix,false)}),fn:function(ix){closeSheet();tap(ix)}},{t:"small",x:SRCNOTE}],go:link,goText:"افتحي الحجز"})},
+    list=function(sel){showAction({type:"card",key:key,icon:trip==="round"?"route":"plane",tone:"open",tagTone:"ask",title:head,tag:"قل رقم الخيار أو اضغطه",keep:true,blocks:[{t:"text",x:sub},{t:"opts",items:ops.slice(0,3).map(function(o,ix){return row(o,ix,ix===sel)}),fn:function(ix){tap(ix)}},{t:"small",x:SRCNOTE}],
+      go:link,goText:"افتحي الحجز",second:ops.length>3?{t:"خيارات أكثر · "+ops.length,fn:more}:null})},
+    tap=function(ix){var o=ops[ix],d=[cS(o.airline,24),cS(o.depart_time,12)+" ← "+cS(o.arrive_time,12),money(o.price)?money(o.price)+" "+cur:""].filter(Boolean).join("، ");pick(ix);
+      if(live&&ready)sendText(isEn()?"(I tapped flight option "+(ix+1)+" on the card: "+d+". It is already on screen.) Confirm it in one short sentence; do not show the card again.":"(ضغطت على البطاقة خيار الرحلة رقم "+(ix+1)+": "+d+". وهو ظاهر على الشاشة.) أكّديه لي بجملة قصيرة، ولا تعرضين البطاقة مرة ثانية.","الخيار "+(ix+1))};
+  var ch=+a.chosen||0;if(ch&&(ch<1||ch>ops.length||ch%1))return cb({error:"chosen must be between 1 and "+ops.length+", in the same order as options"});
+  if(ch)pick(ch-1);else list(-1);
   cb({shown:true,options_shown:Math.min(3,ops.length),total_options:ops.length,note:ch?"The chosen flight is on screen with a booking link. He books and pays himself.":"Options are on screen, numbered. Say the three briefly and that prices are approximate. When he picks, call show_flights again with the same data and chosen set to his number."})};
 TOOLS.show_hotels=function(a,cb){a=a||{};var city=cS(a.city,40),cur=cS(a.currency,8)||"ر.س",ci=cS(a.check_in,40),co=cS(a.check_out,40),nights=cS(a.nights,10),key="hotels|"+city+ci;
   var ops=cArr(a.options).slice(0,10).map(function(o){return o||{}}).filter(function(o){return cS(o.name,60)});
@@ -1229,9 +1246,12 @@ TOOLS.show_hotels=function(a,cb){a=a||{};var city=cS(a.city,40),cur=cS(a.currenc
     sub=[ci&&co?ci+" – "+co:ci,nights?nights+" ليالٍ":"",cS(a.guests,20)].filter(Boolean).join(" · "),
     pick=function(ix){var o=ops[ix],rw=[];if(ci)rw.push(["الدخول",ci]);if(co)rw.push(["الخروج",co]);if(money(o.price_per_night))rw.push(["السعر",money(o.price_per_night)+" "+cur+" / ليلة"]);if(cS(o.total,14))rw.push(["الإجمالي",cS(o.total,14)+" "+cur]);if(cS(o.cancellation,60))rw.push(["الإلغاء",cS(o.cancellation,60)]);
       showAction({type:"card",key:key,icon:"bed",tone:"open",title:cS(o.name,60),tag:[cS(o.rating,8)?"★ "+cS(o.rating,8):"",cS(o.distance,40)].filter(Boolean).join(" · "),blocks:[{t:"kv",rows:rw.length?rw:[["المدينة",city]]},{t:"small",x:SRCNOTE}],go:link(o),goText:"افتح صفحة الحجز",keep:true,second:{t:"غيّري الفندق",fn:function(){list(-1)}}})},
-    more=function(){openSheet({icon:"bed",tone:"open",title:"كل الفنادق · "+city,tag:ops.length+" فنادق",blocks:[{t:"opts",items:ops.map(function(o,ix){return row(o,ix,false)}),fn:function(ix){closeSheet();pick(ix)}},{t:"small",x:SRCNOTE}],go:link(null),goText:"افتحي الحجز"})},
-    list=function(sel){showAction({type:"card",key:key,icon:"bed",tone:"open",tagTone:"ask",title:"فنادق في "+city,tag:"قل رقم الخيار أو اضغطه",keep:true,blocks:(sub?[{t:"text",x:sub}]:[]).concat([{t:"opts",items:ops.slice(0,3).map(function(o,ix){return row(o,ix,ix===sel)}),fn:pick},{t:"small",x:SRCNOTE}]),go:link(null),goText:"افتحي الحجز",second:ops.length>3?{t:"فنادق أكثر · "+ops.length,fn:more}:null})};
-  var ch=+a.chosen||0;if(ch>=1&&ch<=ops.length)pick(ch-1);else list(-1);
+    more=function(){openSheet({icon:"bed",tone:"open",title:"كل الفنادق · "+city,tag:ops.length+" فنادق",blocks:[{t:"opts",items:ops.map(function(o,ix){return row(o,ix,false)}),fn:function(ix){closeSheet();tap(ix)}},{t:"small",x:SRCNOTE}],go:link(null),goText:"افتحي الحجز"})},
+    list=function(sel){showAction({type:"card",key:key,icon:"bed",tone:"open",tagTone:"ask",title:"فنادق في "+city,tag:"قل رقم الخيار أو اضغطه",keep:true,blocks:(sub?[{t:"text",x:sub}]:[]).concat([{t:"opts",items:ops.slice(0,3).map(function(o,ix){return row(o,ix,ix===sel)}),fn:function(ix){tap(ix)}},{t:"small",x:SRCNOTE}]),go:link(null),goText:"افتحي الحجز",second:ops.length>3?{t:"فنادق أكثر · "+ops.length,fn:more}:null})},
+    tap=function(ix){var o=ops[ix],d=[cS(o.name,60),money(o.price_per_night)?money(o.price_per_night)+" "+cur+" لليلة":""].filter(Boolean).join("، ");pick(ix);
+      if(live&&ready)sendText(isEn()?"(I tapped hotel option "+(ix+1)+" on the card: "+d+". It is already on screen.) Confirm it in one short sentence; do not show the card again.":"(ضغطت على البطاقة خيار الفندق رقم "+(ix+1)+": "+d+". وهو ظاهر على الشاشة.) أكّديه لي بجملة قصيرة، ولا تعرضين البطاقة مرة ثانية.","الخيار "+(ix+1))};
+  var ch=+a.chosen||0;if(ch&&(ch<1||ch>ops.length||ch%1))return cb({error:"chosen must be between 1 and "+ops.length+", in the same order as options"});
+  if(ch)pick(ch-1);else list(-1);
   cb({shown:true,options_shown:Math.min(3,ops.length),total_options:ops.length,note:ch?"The chosen hotel is on screen with a booking link. He books and pays himself.":"Hotel options are on screen, numbered. Say the three briefly and that prices are approximate. When he picks, call show_hotels again with the same data and chosen set to his number."})};
 TOOLS.show_trip=function(a,cb){a=a||{};var title=cS(a.title,60),cur=cS(a.currency,8)||"ر.س",IK={flight:"plane",hotel:"bed",car:"car",other:"spark"},
     parts=cArr(a.parts).slice(0,8).map(function(p){p=p||{};return [IK[p.kind]||"spark",cS(p.title,70),cS(p.detail,80),money(p.price)]}).filter(function(p){return p[1]});
@@ -1285,8 +1305,11 @@ TOOLS.show_news=function(a,cb){var it=cArr(a&&a.items).slice(0,10).map(function(
 function devGet(){return lsArr(K.dev)}
 function devLine(en){var a=devGet();if(!a.length)return en?"He has no connected device actions yet; if he asks to control a device or car, tell him to add it in Settings.\n":"ما عنده أوامر أجهزة مضافة للحين؛ إذا طلب تشغيل جهاز أو سيارة قولي له يضيفه من الإعدادات.\n";
   return (en?"His connected device actions (run with device_action by exact name): ":"أوامر أجهزته المتصلة (شغّليها بـ device_action بنفس الاسم): ")+a.map(function(d){return d.n}).join(en?"; ":"؛ ")+".\n"}
+function devNorm(x){return String(x||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/[^\u0621-\u064Aa-z0-9]+/g," ").trim().split(" ").map(function(w){return w.replace(/^ال(?=..)/,"")})}
+function devFind(list,q){var ws=devNorm(q).filter(function(w){return w.length>1&&!/^(شغل|شغلي|افتح|افتحي|طف|طفي|سكر|سكري|نفذ|نفذي|لي|run|start|turn|open|on|off|the|my)$/.test(w)}),best=-1,bs=0,tie=false;if(!ws.length)return -1;
+  list.forEach(function(d,i){var t=" "+devNorm(d.n+" "+d.v+" "+(d.h||"")).join(" "),n=0;ws.forEach(function(w){if(t.indexOf(" "+w)>=0)n++});if(n>bs){bs=n;best=i;tie=false}else if(n&&n===bs)tie=true});return tie?-1:best}
 function devRun(d){fetch(d.v,{method:"POST",mode:"no-cors"}).then(function(){toast("نُفّذ: "+d.n)},function(){toast("تعذّر تنفيذ: "+d.n)})}
-TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(d){return {name:d.n,symbol:""}}),a.name,""),d=list[i];
+TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(d){return {name:d.n,symbol:""}}),a.name,""),d=list[i>=0?i:devFind(list,a.name)];
   if(!d)return cb({error:"no matching action",available:list.map(function(x){return x.n}),tell_user:"Ask him to add it under Settings, Connected devices."});
   if(d.t==="hook"&&!d.c){devRun(d);return cb({sent:true,name:d.n})}
   showAction({type:"device",title:d.n,tag:d.t==="sc"?"اختصار iPhone":"رابط ويب",body:d.h||"اضغط «نفّذ» للتأكيد.",go:d.t==="sc"?"shortcuts://run-shortcut?name="+encodeURIComponent(d.v):"#",goText:"نفّذ",fn:d.t==="sc"?null:function(){devRun(d)}});
@@ -1449,7 +1472,7 @@ var P1={type:"STRING"},FOPT={type:"OBJECT",properties:{depart_time:P1,arrive_tim
  {name:"confirm_call",description:"Start or cancel the assistant call that is waiting on screen, after he answered by voice. start true only after he clearly said yes.",parameters:{type:"OBJECT",properties:{start:{type:"BOOLEAN"}},required:["start"]}},
  {name:"assistant_call",description:"Place a phone call from the app's phone line in which YOU speak to the other side on his behalf, then get the result. Use only when he asks you to tell, ask, book or arrange something by phone.",parameters:{type:"OBJECT",properties:{name:{type:"STRING",description:"Person or business to call"},number:{type:"STRING",description:"Phone number with country code if known"},brief:{type:"STRING",description:"Complete instructions for the call in his language: purpose, exact request, date and time, the name to use, acceptable alternatives, and anything not to say."}},required:["name","brief"]}},
  {name:"calendar_list",description:"Read what is recorded in his calendar: meetings, appointments and reminders. Works on his phone, and includes Google Calendar when it is connected.",parameters:{type:"OBJECT",properties:{from:{type:"STRING",description:"Local start like 2026-11-15T00:00; default now"},days:{type:"NUMBER",description:"How many days ahead, default 2"}}}},
- {name:"calendar_add",description:"Record a meeting or an appointment in his calendar. He can undo it on screen. If it overlaps another one it is not saved and a clash is reported.",parameters:{type:"OBJECT",properties:{title:P1,start:{type:"STRING",description:"Local time like 2026-11-15T16:00"},minutes:{type:"NUMBER",description:"Length, default 60"},kind:{type:"STRING",enum:["meeting","appointment"]},location:P1,notes:P1,allow_clash:{type:"BOOLEAN",description:"True only after he said to keep both"}},required:["title","start"]}},
+ {name:"calendar_add",description:"Record a meeting or an appointment in his calendar. He can undo it on screen. If it overlaps another one it is not saved and a clash is reported.",parameters:{type:"OBJECT",properties:{title:P1,start:{type:"STRING",description:"Local time like 2026-11-15T16:00"},minutes:{type:"NUMBER",description:"Length, default 60"},kind:{type:"STRING",enum:["meeting","appointment"]},location:P1,notes:P1,allow_clash:{type:"BOOLEAN",description:"True only after he said to keep both"},allow_past:{type:"BOOLEAN",description:"True only if he really wants to record something that already happened"}},required:["title","start"]}},
  {name:"calendar_update",description:"Change an existing event's title, time or place.",parameters:{type:"OBJECT",properties:{event_id:P1,title:P1,start:P1,minutes:{type:"NUMBER"},location:P1},required:["event_id"]}},
  {name:"calendar_delete",description:"Ask him to confirm deleting an event; a confirm card is shown.",parameters:{type:"OBJECT",properties:{event_id:P1},required:["event_id"]}},
  {name:"reminder_add",description:"Record a reminder. A reminder card appears at that time while the app is open, and you say it.",parameters:{type:"OBJECT",properties:{text:P1,at:{type:"STRING",description:"Local time like 2026-11-15T17:20"}},required:["text","at"]}},
@@ -1514,7 +1537,7 @@ function docRead(parts){var key=get(K.key).trim();if(!key)return Promise.reject(
     var c=cArr(r.j.candidates)[0]||{},t=cArr((c.content||{}).parts).filter(function(p){return !p.thought}).map(function(p){return p.text||""}).join(""),m=t.match(/\{[\s\S]*\}/),o;
     try{o=JSON.parse(m?m[0]:t)}catch(e){throw new Error("read")}if(!o||typeof o!=="object")throw new Error("read");return o})}
 function hmOK(v){var m=/^(\d{1,2}):(\d{2})$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?(+m[1])*60+(+m[2]):-1}
-function hm(v){var n=hmOK(v);return n<0?cS(v,12):t12(n)}
+function docHm(v){var n=hmOK(v);return n<0?cS(v,12):t12(n)}
 function docWhen(d){var f=d.f,ok=/^\d{4}-\d{2}-\d{2}$/.test(f.date||""),n=hmOK(f.time),w;d.when=0;d.allDay=0;if(!ok)return;
   w=new Date(f.date+"T"+(n<0?"00:00":p2(Math.floor(n/60))+":"+p2(n%60))+":00");if(isNaN(w))return;d.when=w.getTime();d.allDay=n<0?1:0}
 function docTitle(d){var f=d.f,k=DK[d.kind]||DK.other;if(d.kind==="boarding"&&(f.to_city||f.to_code))return "رحلة "+(f.to_city||f.to_code)+(f.flight?" · "+f.flight:"");return f.title||(d.kind==="hotel"&&f.place?f.place:k[0])}
@@ -1525,11 +1548,11 @@ function isoDay(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v||""))return v||"";try{return
 function dDate(d){if(!d.when)return d.f.date||"";try{return new Date(d.when).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long"})}catch(e){return d.f.date||""}}
 function docOut(d){var o={id:d.id,kind:d.kind,title:d.title,saved:!d.pend,pages:d.n||1,in_calendar:!!d.ev},k;for(k in d.f)o[k]=d.f[k];if(d.unread)o.details_read=false;return o}
 function docBlocks(d,src){var f=d.f,b=[],kv=[],add=function(k,v){if(v)kv.push([k,v])};
-  if(d.kind==="boarding"&&f.from_code&&f.to_code){add("التاريخ",dDate(d));add("الصعود",hm(f.boarding_time));add("البوابة",f.gate);add("المقعد",f.seat);add("الصالة",f.terminal);add("الحجز",f.code);
-    b.push({t:"ticket",from:f.from_code,fromCity:f.from_city||"",dep:hm(f.time),to:f.to_code,toCity:f.to_city||"",arr:hm(f.arrive_time),dur:f.airline||"",stops:"",fields:kv})}
-  else{if(d.kind==="boarding"){add("الرحلة",[f.airline,f.flight].filter(Boolean).join(" "));add("الموعد",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("البوابة",f.gate);add("المقعد",f.seat);add("الحجز",f.code)}
-    else if(d.kind==="hotel"){add("الفندق",f.place);add("الدخول",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("الخروج",isoDay(f.end_date));add("رقم الحجز",f.code);add("الاسم",f.name)}
-    else{add("المكان",f.place);add("الموعد",[dDate(d),hm(f.time)].filter(Boolean).join(" · "));add("المقعد",f.seat);add("الرمز",f.code);add("ملاحظة",f.notes)}
+  if(d.kind==="boarding"&&f.from_code&&f.to_code){add("التاريخ",dDate(d));add("الصعود",docHm(f.boarding_time));add("البوابة",f.gate);add("المقعد",f.seat);add("الصالة",f.terminal);add("الحجز",f.code);
+    b.push({t:"ticket",from:f.from_code,fromCity:f.from_city||"",dep:docHm(f.time),to:f.to_code,toCity:f.to_city||"",arr:docHm(f.arrive_time),dur:f.airline||"",stops:"",fields:kv})}
+  else{if(d.kind==="boarding"){add("الرحلة",[f.airline,f.flight].filter(Boolean).join(" "));add("الموعد",[dDate(d),docHm(f.time)].filter(Boolean).join(" · "));add("البوابة",f.gate);add("المقعد",f.seat);add("الحجز",f.code)}
+    else if(d.kind==="hotel"){add("الفندق",f.place);add("الدخول",[dDate(d),docHm(f.time)].filter(Boolean).join(" · "));add("الخروج",isoDay(f.end_date));add("رقم الحجز",f.code);add("الاسم",f.name)}
+    else{add("المكان",f.place);add("الموعد",[dDate(d),docHm(f.time)].filter(Boolean).join(" · "));add("المقعد",f.seat);add("الرمز",f.code);add("ملاحظة",f.notes)}
     if(kv.length)b.push({t:"kv",rows:kv})}
   if(src)b.push({t:"photo",src:src,alt:d.title,mini:true,n:0,total:d.n,tap:function(){docOpen(d.id,0,true)}});
   if(d.unread)b.push({t:"small",x:d.unread==="nokey"?"الصورة جاهزة. لقراءة التفاصيل أدخل مفتاح Google AI في الإعدادات.":d.unread==="quota"?"الصورة جاهزة. وصلت حد الاستخدام، فما انقرأت التفاصيل الآن.":"الصورة جاهزة، وما قدرت أقرأ التفاصيل. قل لمساعد البيانات وهي تضيفها."});
@@ -1650,9 +1673,11 @@ $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
 function showDiag(){var e=$("#diag");if(!e)return;var L=["أوامر + بحث","أوامر بدون بحث","بدون أوامر","بدون أوامر ولا نص"];
-  e.textContent="الإصدار: "+BUILD+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
+  var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
+  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
+$("#lmBtn").onclick=function(){if(modelPick()===MODEL_NEW)set(K.lm,JSON.stringify({m:"old",why:"user",t:Date.now()}));else set(K.lm,"");showDiag();toast(modelPick()===MODEL_NEW?"النموذج الصوتي: الأحدث":"النموذج الصوتي: السابق");if(live){stop();start()}};
 $("#saveBtn").onclick=function(){set(K.gid,$("#gidIn").value.trim());set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);if(live)stop();closeCard();if(get(K.key))start()};
 $("#locBtn").onclick=function(){$("#locState").textContent="جارٍ التحديد…";getLoc(null,true)};showLoc();
 $("#clearBtn").onclick=function(){log=[];set(K.log,"[]");renderLog()};
