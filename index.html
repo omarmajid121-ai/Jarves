@@ -340,7 +340,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.12",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.13",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -638,7 +638,7 @@ function handle(m){
       if(!fn){cb({error:"unknown tool"});return}try{fn(fc.args||{},cb)}catch(e){cb({error:"failed"})}});return}
   var sc=m.serverContent;if(!sc)return;
   if(sc.interrupted){flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
-  if(sc.inputTranscription&&sc.inputTranscription.text){if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.inputTranscription&&sc.inputTranscription.text){if(acPend&&sc.inputTranscription.text.trim())acPend.heard=true;if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
   if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7}
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn){sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
@@ -899,7 +899,7 @@ TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(
   cb({awaiting_user_tap:true,name:d.n,note:"A card is on screen; it runs when he taps it."+(d.m?" "+d.m:"")})};
 function acBase(){return get(K.cs).trim().replace(/\/+$/,"")}
 function acOn(){return /^https:\/\/[^\s]+$/.test(acBase())&&get(K.ck).length>=12}
-function acLine(en){if(acOn())return en?"You can also place a phone call yourself and speak to the other side for him, with assistant_call. Whenever he asks you to call someone AND tell, ask, book or arrange something, you must use assistant_call, never show_action. Before using it make sure the brief is complete: who to call, exactly what to say or request, date and time, the name to use, and what to accept if the first choice is unavailable; ask him for whatever is missing. A card appears and the call starts only when he taps it. When the call ends you receive its result as a message; then tell him the result briefly. Use show_action call only when he wants to talk himself.\n":"وتقدرين كمان تتصلين بنفسك وتتكلمين مع الطرف الثاني بالنيابة عنه بـ assistant_call. كل ما طلب منك تتصلين على أحد وتقولين له أو تسألينه أو تحجزين أو ترتبين شي، لازم تستخدمين assistant_call وليس show_action. قبلها تأكدي إن المهمة كاملة: مين تتصلين عليه، وش تقولين أو تطلبين بالضبط، التاريخ والوقت، الاسم اللي تستخدمينه، ووش البديل المقبول إذا الخيار الأول مو متاح؛ واسأليه عن أي شي ناقص. تطلع له بطاقة والمكالمة ما تبدأ إلا إذا ضغط. وإذا خلصت المكالمة توصلك نتيجتها كرسالة؛ قولي له النتيجة باختصار. واستخدمي show_action للاتصال بس إذا هو يبي يتكلم بنفسه.\n";
+function acLine(en){if(acOn())return en?"You can also place a phone call yourself and speak to the other side for him, with assistant_call. Whenever he asks you to call someone AND tell, ask, book or arrange something, you must use assistant_call, never show_action. Before using it make sure the brief is complete: who to call, exactly what to say or request, date and time, the name to use, and what to accept if the first choice is unavailable; ask him for whatever is missing. A card appears; ask him to confirm, and when he says yes call confirm_call with start true (he can also tap the card). When the call ends you receive its result as a message; then tell him the result briefly. Use show_action call only when he wants to talk himself.\n":"وتقدرين كمان تتصلين بنفسك وتتكلمين مع الطرف الثاني بالنيابة عنه بـ assistant_call. كل ما طلب منك تتصلين على أحد وتقولين له أو تسألينه أو تحجزين أو ترتبين شي، لازم تستخدمين assistant_call وليس show_action. قبلها تأكدي إن المهمة كاملة: مين تتصلين عليه، وش تقولين أو تطلبين بالضبط، التاريخ والوقت، الاسم اللي تستخدمينه، ووش البديل المقبول إذا الخيار الأول مو متاح؛ واسأليه عن أي شي ناقص. تطلع له بطاقة؛ اسأليه يأكد، وإذا قال نعم استخدمي confirm_call مع start true (ويقدر كمان يضغط البطاقة). وإذا خلصت المكالمة توصلك نتيجتها كرسالة؛ قولي له النتيجة باختصار. واستخدمي show_action للاتصال بس إذا هو يبي يتكلم بنفسه.\n";
   return en?"You cannot speak on phone calls yet. If he asks you to call and tell someone something, prepare the call with show_action and its reason, and say he will do the talking.\n":"ما تقدرين تتكلمين في المكالمات للحين. إذا طلب تتصلين وتقولين لأحد شي، جهزي له الاتصال بـ show_action مع الموضوع، وقولي له إنه هو اللي بيتكلم.\n"}
 function e164(n){n=String(n||"").replace(/[^\d+]/g,"");if(/^\+[1-9]\d{7,14}$/.test(n))return n;if(/^00[1-9]\d{7,14}$/.test(n))return "+"+n.slice(2);if(/^05\d{8}$/.test(n))return "+966"+n.slice(1);if(/^5\d{8}$/.test(n))return "+966"+n;if(/^9665\d{8}$/.test(n))return "+"+n;return ""}
 var ACOUT={done:"تمّت",partly:"تمّت جزئيًا",not_done:"لم تتم",voicemail:"بريد صوتي",wrong_number:"رقم خاطئ",needs_owner:"تحتاج قرارك",no_answer:"لم يرد",busy:"الخط مشغول",failed:"تعذّر الاتصال",ended:"انتهت بدون ملخص",canceled:"أُلغيت"},
@@ -928,8 +928,14 @@ TOOLS.assistant_call=function(a,cb){a=a||{};var name=String(a.name||"").trim().s
   if(!ctNum(num)){var m=ctFind(name);if(m.length===1)num=m[0].p}
   var to=e164(num);if(!to)return cb({error:"number_required",tell_user:"Ask him for the phone number with its country code, or search for the business number."});
   ctSave(name,to);
-  showAction({type:"acall",title:"مساعد تتصل بـ "+name,tag:"هي اللي تتكلم",body:to+"\nالمهمة: "+brief,go:"#",goText:"اتصلي الآن",keep:true,fn:function(){acRun({name:name,to:to,brief:brief})}});
-  cb({awaiting_user_tap:true,note:"A card with the brief is on screen. The call starts only when he taps it. Do not say the call has been made. You will receive the result as a message when the call ends."})};
+  acPend={o:{name:name,to:to,brief:brief},t:Date.now(),heard:false};
+  showAction({type:"acall",title:"مساعد تتصل بـ "+name,tag:"قل «نعم» أو اضغط",body:to+"\nالمهمة: "+brief,go:"#",goText:"اتصلي الآن",keep:true,fn:function(){var q=acPend;acPend=null;if(q)acRun(q.o)}});
+  cb({awaiting_confirmation:true,note:"A card with the brief is on screen. Now ask him in one short sentence whether to start the call. When he answers yes by voice, call confirm_call with start true; if he says no or changes his mind, call confirm_call with start false. He can also tap the card. Never call confirm_call before you hear his answer. Do not say the call has been made. You will receive the result as a message when the call ends."})};
+var acPend=null;
+TOOLS.confirm_call=function(a,cb){var q=acPend;if(!q||Date.now()-q.t>180000){acPend=null;return cb({error:"no_pending_call",tell_user:"There is no call waiting. Prepare it again with assistant_call."})}
+  if(a&&a.start===false){acPend=null;if(act&&act.type==="acall")closeAction();return cb({cancelled:true})}
+  if(!q.heard)return cb({error:"not_confirmed_yet",note:"He has not spoken since the card appeared. Ask him and wait for his spoken yes."});
+  acPend=null;goFn=null;if(act&&act.type==="acall")closeAction();acRun(q.o);cb({started:true,note:"The call is starting. Tell him in a few words. The result arrives as a message when it ends."})};
 function acShow(){if(!$("#csIn"))return;$("#csIn").value=get(K.cs);$("#ckIn").value=get(K.ck);$("#csState").textContent=acOn()?"محفوظ":"غير مفعّل"}
 $("#csBtn").onclick=function(){var u=$("#csIn").value.trim().replace(/\/+$/,""),k=$("#ckIn").value;if(!/^https:\/\//.test(u)){toast("الرابط يجب أن يبدأ بـ https://");return}if(k.length<12){toast("كلمة السر ١٢ حرفًا أو أكثر");return}
   set(K.cs,u);set(K.ck,k);$("#csState").textContent="جارٍ الفحص… قد يأخذ دقيقة";
@@ -964,6 +970,7 @@ function gTiles(T,sum){var e,now=Date.now(),nx=null,d,m;
   else line(e,"ts",BR.mail?"لا رسائل غير مقروءة":(BR.busy?"جارٍ التحميل…":"تعذّر تحميل البريد"));
   T.appendChild(e)}
 var P1={type:"STRING"},XDECL=[
+ {name:"confirm_call",description:"Start or cancel the assistant call that is waiting on screen, after he answered by voice. start true only after he clearly said yes.",parameters:{type:"OBJECT",properties:{start:{type:"BOOLEAN"}},required:["start"]}},
  {name:"assistant_call",description:"Place a phone call from the app's phone line in which YOU speak to the other side on his behalf, then get the result. Use only when he asks you to tell, ask, book or arrange something by phone.",parameters:{type:"OBJECT",properties:{name:{type:"STRING",description:"Person or business to call"},number:{type:"STRING",description:"Phone number with country code if known"},brief:{type:"STRING",description:"Complete instructions for the call in his language: purpose, exact request, date and time, the name to use, acceptable alternatives, and anything not to say."}},required:["name","brief"]}},
  {name:"calendar_list",description:"Read his Google Calendar events.",parameters:{type:"OBJECT",properties:{from:{type:"STRING",description:"Local start like 2026-11-15T00:00; default now"},days:{type:"NUMBER",description:"How many days ahead, default 2"}}}},
  {name:"calendar_add",description:"Add an event to his Google Calendar. He can undo it on screen.",parameters:{type:"OBJECT",properties:{title:P1,start:{type:"STRING",description:"Local time like 2026-11-15T16:00"},minutes:{type:"NUMBER",description:"Length, default 60"},location:P1,notes:P1},required:["title","start"]}},
