@@ -1477,7 +1477,7 @@ var P1={type:"STRING"},FOPT={type:"OBJECT",properties:{depart_time:P1,arrive_tim
 K.docs="musaed.docs";KIND.flight=["رحلة","#5E5CE6"];KIND.stay=["إقامة","#FF9F0A"];KIND.event=["فعالية","#30D158"];
 var DK={boarding:["بطاقة صعود","plane","flight"],hotel:["حجز فندق","bed","stay"],event:["تذكرة","spark","event"],other:["وثيقة","note","appointment"]},
   DF=["title","name","code","date","time","end_date","place","seat","airline","flight","from_code","from_city","to_code","to_city","arrive_time","boarding_time","gate","terminal","class","notes"],
-  GAPI="https://generativelanguage.googleapis.com/v1beta/",PDFJS="vendor/pdfjs/",
+  GAPI="https://generativelanguage.googleapis.com/v1beta/",PDFJS="lib/pdfjs/",
   docBusy=false,docModel="",dbP=null,pdfP=null,memF={},dvS=null,wakeL=null;
 function docGet(){return lsArr(K.docs)}
 function docSet(a){set(K.docs,JSON.stringify(a))}
