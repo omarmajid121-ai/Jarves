@@ -137,7 +137,9 @@ body.acting .readout{opacity:0}
 .skel i{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.26),rgba(255,255,255,.08));background-size:200% 100%;animation:shim 1.4s linear infinite}
 .skel i:nth-child(2){width:78%}.skel i:nth-child(3){width:56%}
 @keyframes shim{from{background-position:200% 0}to{background-position:-200% 0}}
-.abtns{display:flex;gap:10px}
+.abtns{display:flex;gap:10px;flex-wrap:wrap}
+#actAlt{flex:1 1 100%;order:-1;background:#30D158;color:#00210C}
+#actAlt[hidden]{display:none}
 .abtns a,.abtns button{flex:1;min-height:44px;border-radius:22px;border:0;display:grid;place-items:center;font-size:17px;font-weight:600;text-decoration:none}
 #actGo{background:var(--blue);color:#fff}
 #actClose{background:var(--fill);color:var(--label)}
@@ -228,7 +230,7 @@ button.tile:active{transform:scale(.97)}
   <div class="arow"><span class="ic" id="actIc"></span><div class="tt"><div id="actTitle"></div><div id="actTag"></div></div></div>
   <p id="actBody"></p>
   <div class="skel" id="actSkel" hidden><i></i><i></i><i></i></div>
-  <div class="abtns"><a id="actGo" href="#" hidden></a><button id="actClose">إغلاق</button></div>
+  <div class="abtns"><button id="actAlt" type="button" hidden></button><a id="actGo" href="#" hidden></a><button id="actClose">إغلاق</button></div>
 </div>
 
 <section id="card" aria-label="المحادثة والإعدادات">
@@ -338,7 +340,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.11",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.12",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -464,13 +466,14 @@ var ICON={call:['green','<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2
   sms:['teal','<path d="M4 5h16v11H10l-5 4v-4H4z"></path>'],email:['blue','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path>'],
   meeting:['violet','<rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path>']};
 ICON.pf=['green','<path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L19 8"></path>'];
-var typeT=null,actT=null,goFn=null,BASE={call:1,sms:1,email:1,meeting:1,pf:1,whatsapp:1,maps:1},GEN={google:1,confirm:1,device:1,draft:1,news:1,acall:1},VIS={whatsapp:"sms",maps:"meeting",google:"email",draft:"email",news:"email",confirm:"meeting",device:"call",acall:"call"};
+var typeT=null,actT=null,goFn=null,altFn=null,BASE={call:1,sms:1,email:1,meeting:1,pf:1,whatsapp:1,maps:1},GEN={google:1,confirm:1,device:1,draft:1,news:1,acall:1},VIS={whatsapp:"sms",maps:"meeting",google:"email",draft:"email",news:"email",confirm:"meeting",device:"call",acall:"call"};
 function typeInto(el,text){clearInterval(typeT);el.textContent="";var i=0;if(!text)return;typeT=setInterval(function(){i+=2;el.textContent=text.slice(0,i);if(i>=text.length)clearInterval(typeT)},22)}
 function showAction(a){
   a=a||{};var type=(BASE[a.type]||GEN[a.type])?a.type:"call";
   var name=String(a.name||"").slice(0,60),num=String(a.number||"").replace(/[^\d+]/g,"").slice(0,20),text=String(a.text||"").slice(0,400);
-  var title="",tag="",body="",go="",goText="",real=false;
-  if(type==="call"){title=name?"اتصال بـ "+name:"اتصال";var why=String(a.reason||"").slice(0,200);if(num){body=num+(why?"\nالموضوع: "+why:"");go="tel:"+num;goText="اتصال";tag="جاهز للاتصال";real=true}else{body="لم يُحدَّد رقم الهاتف."+(why?"\nالموضوع: "+why:"");tag="يتطلب رقمًا"}}
+  var title="",tag="",body="",go="",goText="",real=false,alt=null;
+  if(type==="call"){title=name?"اتصال بـ "+name:"اتصال";var why=String(a.reason||"").slice(0,200);if(num){body=num+(why?"\nالموضوع: "+why:"");go="tel:"+num;goText=acOn()&&why&&e164(num)?"أتصل أنا":"اتصال";tag="جاهز للاتصال";real=true;
+      if(acOn()&&why&&e164(num))alt={t:"خلّيها تتصل وتتكلم عني",fn:function(){acRun({name:name||num,to:e164(num),brief:why})}}}else{body="لم يُحدَّد رقم الهاتف."+(why?"\nالموضوع: "+why:"");tag="يتطلب رقمًا"}}
   else if(type==="sms"){title=name?"رسالة إلى "+name:"رسالة نصية";body=text||"لم يُحدَّد نص الرسالة.";if(num){go="sms:"+num+"&body="+encodeURIComponent(text);goText="فتح الرسائل";tag="جاهزة للإرسال";real=true}else{tag="يتطلب رقمًا"}}
   else if(GEN[type]){title=String(a.title||"");tag=String(a.tag||"");body=String(a.body||"");go=a.go||"";goText=a.goText||"";real=!!go}
   else if(type==="whatsapp"){title=name?"واتساب إلى "+name:"رسالة واتساب";body=text||"";if(num){go="https://wa.me/"+num.replace(/\D/g,"")+(text?"?text="+encodeURIComponent(text):"");goText="افتح واتساب";tag="جاهزة · أنت ترسل";real=true}else{tag="يتطلب رقمًا";body=body||"لم يُحدَّد رقم."}}
@@ -483,6 +486,7 @@ function showAction(a){
   $("#actTitle").textContent=title;$("#actTag").textContent=tag;typeInto($("#actBody"),body);
   $("#actSkel").hidden=type!=="email";
   var goEl=$("#actGo");if(go){goEl.href=go;goEl.textContent=goText;goEl.hidden=false;if(/^https:/.test(go)){goEl.target="_blank";goEl.rel="noopener"}else{goEl.removeAttribute("target")}}else{goEl.hidden=true;goEl.removeAttribute("href")}
+  var al=$("#actAlt");altFn=alt?alt.fn:null;al.hidden=!alt;al.textContent=alt?alt.t:"";
   act={type:type,vis:VIS[type]||type,t0:performance.now()/1000};$("#act").classList.add("on");document.body.classList.add("acting");document.body.dataset.act=type;
   clearTimeout(actT);if(!a.keep)actT=setTimeout(closeAction,30000);
   return {shown:true,ready_for_user_tap:real,note:real?"A card is on screen; the user taps it to confirm.":(type==="call"||type==="sms")?"Shown without a phone number; ask for the number.":"Preview only; this service is not connected yet."}}
@@ -589,7 +593,7 @@ function setupMsg(){
     systemInstruction:{parts:[{text:prompt()}]}};
   if(attempt<3){s.inputAudioTranscription={};s.outputAudioTranscription={};
     s.realtimeInputConfig={automaticActivityDetection:{startOfSpeechSensitivity:"START_SENSITIVITY_HIGH",prefixPaddingMs:40,silenceDurationMs:600},activityHandling:"START_OF_ACTIVITY_INTERRUPTS"}}
-  if(attempt<2)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an on-screen card the user taps to confirm: a phone call, an SMS, a WhatsApp message, or map directions.",
+  if(attempt<2)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an on-screen card the user taps to confirm: a phone call that HE dials and speaks on himself, an SMS, a WhatsApp message, or map directions. Not for calls where you should do the talking.",
     parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["call","sms","whatsapp","maps"]},name:{type:"STRING",description:"Person or contact name"},
       number:{type:"STRING",description:"Phone number with digits only"},reason:{type:"STRING",description:"For a call: what the call is about, in his words. Shown on the card to remind him."},text:{type:"STRING",description:"Message body"},place:{type:"STRING",description:"Destination, for maps"},
       title:{type:"STRING",description:"Meeting title"},when:{type:"STRING",description:"Meeting date and time in the user's words"}},required:["type"]}},
@@ -895,7 +899,7 @@ TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(
   cb({awaiting_user_tap:true,name:d.n,note:"A card is on screen; it runs when he taps it."+(d.m?" "+d.m:"")})};
 function acBase(){return get(K.cs).trim().replace(/\/+$/,"")}
 function acOn(){return /^https:\/\/[^\s]+$/.test(acBase())&&get(K.ck).length>=12}
-function acLine(en){if(acOn())return en?"You can also place a phone call yourself and speak to the other side for him, with assistant_call. Use it when he asks you to tell, ask, book or arrange something by phone. Before using it make sure the brief is complete: who to call, exactly what to say or request, date and time, the name to use, and what to accept if the first choice is unavailable; ask him for whatever is missing. A card appears and the call starts only when he taps it. When the call ends you receive its result as a message; then tell him the result briefly. Use show_action call only when he wants to talk himself.\n":"وتقدرين كمان تتصلين بنفسك وتتكلمين مع الطرف الثاني بالنيابة عنه بـ assistant_call. استخدميها إذا طلب منك تقولين أو تسألين أو تحجزين أو ترتبين شي بالتلفون. قبلها تأكدي إن المهمة كاملة: مين تتصلين عليه، وش تقولين أو تطلبين بالضبط، التاريخ والوقت، الاسم اللي تستخدمينه، ووش البديل المقبول إذا الخيار الأول مو متاح؛ واسأليه عن أي شي ناقص. تطلع له بطاقة والمكالمة ما تبدأ إلا إذا ضغط. وإذا خلصت المكالمة توصلك نتيجتها كرسالة؛ قولي له النتيجة باختصار. واستخدمي show_action للاتصال بس إذا هو يبي يتكلم بنفسه.\n";
+function acLine(en){if(acOn())return en?"You can also place a phone call yourself and speak to the other side for him, with assistant_call. Whenever he asks you to call someone AND tell, ask, book or arrange something, you must use assistant_call, never show_action. Before using it make sure the brief is complete: who to call, exactly what to say or request, date and time, the name to use, and what to accept if the first choice is unavailable; ask him for whatever is missing. A card appears and the call starts only when he taps it. When the call ends you receive its result as a message; then tell him the result briefly. Use show_action call only when he wants to talk himself.\n":"وتقدرين كمان تتصلين بنفسك وتتكلمين مع الطرف الثاني بالنيابة عنه بـ assistant_call. كل ما طلب منك تتصلين على أحد وتقولين له أو تسألينه أو تحجزين أو ترتبين شي، لازم تستخدمين assistant_call وليس show_action. قبلها تأكدي إن المهمة كاملة: مين تتصلين عليه، وش تقولين أو تطلبين بالضبط، التاريخ والوقت، الاسم اللي تستخدمينه، ووش البديل المقبول إذا الخيار الأول مو متاح؛ واسأليه عن أي شي ناقص. تطلع له بطاقة والمكالمة ما تبدأ إلا إذا ضغط. وإذا خلصت المكالمة توصلك نتيجتها كرسالة؛ قولي له النتيجة باختصار. واستخدمي show_action للاتصال بس إذا هو يبي يتكلم بنفسه.\n";
   return en?"You cannot speak on phone calls yet. If he asks you to call and tell someone something, prepare the call with show_action and its reason, and say he will do the talking.\n":"ما تقدرين تتكلمين في المكالمات للحين. إذا طلب تتصلين وتقولين لأحد شي، جهزي له الاتصال بـ show_action مع الموضوع، وقولي له إنه هو اللي بيتكلم.\n"}
 function e164(n){n=String(n||"").replace(/[^\d+]/g,"");if(/^\+[1-9]\d{7,14}$/.test(n))return n;if(/^00[1-9]\d{7,14}$/.test(n))return "+"+n.slice(2);if(/^05\d{8}$/.test(n))return "+966"+n.slice(1);if(/^5\d{8}$/.test(n))return "+966"+n;if(/^9665\d{8}$/.test(n))return "+"+n;return ""}
 var ACOUT={done:"تمّت",partly:"تمّت جزئيًا",not_done:"لم تتم",voicemail:"بريد صوتي",wrong_number:"رقم خاطئ",needs_owner:"تحتاج قرارك",no_answer:"لم يرد",busy:"الخط مشغول",failed:"تعذّر الاتصال",ended:"انتهت بدون ملخص",canceled:"أُلغيت"},
@@ -987,6 +991,7 @@ $("#stage").onclick=function(){
   if(!live){start();return}
   if(ready&&speaking()){flush();dropTurn=true}};
 $("#actClose").onclick=closeAction;
+$("#actAlt").onclick=function(){var f=altFn;altFn=null;closeAction();if(f)f()};
 $("#actGo").addEventListener("click",function(e){if(goFn){e.preventDefault();var f=goFn;goFn=null;closeAction();f();return}if(act&&act.type==="pf"){e.preventDefault();closeAction();openCard("pf");return}flash=1;try{if(navigator.vibrate)navigator.vibrate(18)}catch(e){}});
 $("#paneSet").addEventListener("click",function(e){var b=e.target.closest("[data-demo]");if(!b)return;var t=b.getAttribute("data-demo");closeCard();if(t==="pf"){showPortfolio({});return}
   showAction(t==="call"?{type:"call",name:"محمد"}:t==="sms"?{type:"sms",name:"محمد",text:"سأتأخر ربع ساعة عن الموعد."}:t==="email"?{type:"email"}:{type:"meeting",title:"اجتماع المتابعة",when:"الأحد، الساعة 11 صباحًا",name:"خالد"})});
