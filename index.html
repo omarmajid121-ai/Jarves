@@ -264,7 +264,10 @@ button.tile:active{transform:scale(.97)}
       <ul id="exList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
     </div>
     <div class="pane settings" id="paneSet">
-      <p class="ghdr">مفتاح التفعيل</p>
+      <p class="ghdr">الحالة</p>
+      <div class="group"><div id="diag" style="padding:12px 16px;font-size:15px;line-height:24px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text"></div></div>
+      <p class="gftr">إذا لم تعمل الأوامر، أرسل صورة لهذا المربع.</p>
+      <p class="ghdr" style="margin-top:0">مفتاح التفعيل</p>
       <div class="group">
         <div class="cell"><span class="ic orange"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l8-8M16 7l2.5 2.5M13.5 9.5l2 2"></path></svg></span>
           <label for="keyIn" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">مفتاح التفعيل</label>
@@ -327,7 +330,7 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL="gemini-3.1-flash-live-preview";
+var MODEL="gemini-3.1-flash-live-preview",BUILD="2026-11-14.6",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev"};
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
@@ -601,7 +604,8 @@ function connect(){
   ws.onerror=function(){};
   ws.onclose=function(ev){
     if(!live)return;
-    if(!ready&&attempt<3&&ev.code!==1008&&!/key/i.test(ev.reason||"")){attempt++;connect();return}
+    if(!ready)DG.errs.push("#"+attempt+" "+ev.code+" "+String(ev.reason||"").slice(0,180));
+    if(!ready&&attempt<3&&!/API key|key not valid|unauth/i.test(ev.reason||"")){attempt++;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
     stop();
     if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صالح. أدخل مفتاحًا جديدًا من الإعدادات.");openCard("set")}
@@ -610,11 +614,12 @@ function connect(){
     else if(wasReady)note("انتهت الجلسة. اضغط للمتابعة.");
     else note("تعذّر الاتصال. "+(why?"السبب: "+why:"تحقق من الإنترنت ومن المفتاح."))}}
 function handle(m){
-  if(m.setupComplete){ready=true;startedAt=Date.now();startMic();setMode("listen");
+  if(m.setupComplete){ready=true;startedAt=Date.now();startMic();setMode("listen");DG.lvl=attempt;showDiag();
+    if(attempt>=2)toast("الأوامر غير مفعّلة في هذه الجلسة. افتح الإعدادات ثم «الحالة».");
     var first=pendingText||(isEn()?"(Session start) Greet me in one short sentence and ask how you can help.":(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج."));
     if(pendingText){curMe=bubble("me",pendingText);pendingText=""}
     ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
-  if(m.toolCall&&m.toolCall.functionCalls){var fcs=m.toolCall.functionCalls,pend=fcs.length,out=[];
+  if(m.toolCall&&m.toolCall.functionCalls){var fcs=m.toolCall.functionCalls,pend=fcs.length,out=[];DG.calls+=fcs.length;DG.last=fcs.map(function(x){return x.name}).join(", ");showDiag();
     var done=function(){if(--pend===0&&ws&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:out}}))};
     fcs.forEach(function(fc,ix){var fin=false,cb=function(r){if(fin)return;fin=true;out[ix]={id:fc.id,name:fc.name,response:r||{}};done()},fn=TOOLS[fc.name];
       if(!fn){cb({error:"unknown tool"});return}try{fn(fc.args||{},cb)}catch(e){cb({error:"failed"})}});return}
@@ -629,7 +634,7 @@ function start(){
   if(live)return;
   if(!get(K.key)){openCard("set");return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}
-  live=true;userEnded=false;attempt=0;setMode("connect");$("#caption").textContent="";
+  live=true;userEnded=false;attempt=0;DG.errs=[];DG.lvl=-1;setMode("connect");$("#caption").textContent="";
   try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("تعذّر تشغيل الصوت في هذا المتصفح.");return}
   buildGraph();ctx.resume().catch(function(){});
   try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
@@ -933,7 +938,9 @@ $("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-s
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
-function openCard(which){if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
+function showDiag(){var e=$("#diag");if(!e)return;var L=["أوامر + بحث","أوامر بدون بحث","بدون أوامر","بدون أوامر ولا نص"];
+  e.textContent="الإصدار: "+BUILD+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
+function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#saveBtn").onclick=function(){set(K.gid,$("#gidIn").value.trim());set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);if(live)stop();closeCard();if(get(K.key))start()};
 $("#locBtn").onclick=function(){$("#locState").textContent="جارٍ التحديد…";getLoc(null,true)};showLoc();
@@ -951,7 +958,9 @@ document.addEventListener("visibilitychange",function(){
   if(document.hidden){if(live)stop()}
   else if(get(K.key)&&!live&&!userEnded&&!$("#card").classList.contains("open"))start()});
 
-renderLog();renderPf();renderDev();showG();setMode("idle");if(gJust){toast("تم ربط حساب Google");gapi("GET","https://people.googleapis.com/v1/people:searchContacts?pageSize=1&readMask=names&query=",null,function(){})}
+renderLog();renderPf();renderDev();showG();setMode("idle");
+if(!location.hash&&location.protocol!=="file:")fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){var k="musaed.rl";
+  if(j&&j.v&&j.v!==BUILD){var last="";try{last=sessionStorage.getItem(k)||""}catch(e){}if(last!==j.v){try{sessionStorage.setItem(k,j.v)}catch(e){}location.replace(location.pathname+"?v="+encodeURIComponent(j.v))}}}).catch(function(){});if(gJust){toast("تم ربط حساب Google");gapi("GET","https://people.googleapis.com/v1/people:searchContacts?pageSize=1&readMask=names&query=",null,function(){})}
 if(!get(K.key)){$("#state").textContent="أدخل مفتاح التفعيل للبدء";openCard("set")}
 else start();
 })();
