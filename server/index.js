@@ -138,11 +138,11 @@ async function placeCall(c) {
   const base = { To: c.to, From: CFG.from };
   const tries = [
     ["full", () => {
-      const f = new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id, Method: "POST", StatusCallback: CFG.pub + "/status?id=" + c.id, StatusCallbackMethod: "POST", TimeLimit: String(CFG.maxSec) });
+      const f = new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id + "&k=" + c.key, Method: "POST", StatusCallback: CFG.pub + "/status?id=" + c.id + "&k=" + c.key, StatusCallbackMethod: "POST", TimeLimit: String(CFG.maxSec) });
       for (const ev of ["initiated", "ringing", "answered", "completed"]) f.append("StatusCallbackEvent", ev);
       return f;
     }],
-    ["url", () => new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id })],
+    ["url", () => new URLSearchParams({ ...base, Url: CFG.pub + "/twiml?id=" + c.id + "&k=" + c.key })],
     ["twiml", () => new URLSearchParams({ ...base, Twiml: twimlFor(c) })]
   ];
   let last = null; const tried = [];
@@ -351,7 +351,7 @@ const server = http.createServer(async (req, res) => {
       if (dayCount >= CFG.maxDay) return send(res, 429, { error: "daily_limit", limit: CFG.maxDay });
       for (const x of calls.values()) if (x.status !== "done" && x.status !== "failed") return send(res, 409, { error: "call_in_progress", id: x.id });
       const c = {
-        id: crypto.randomBytes(9).toString("hex"), tok: crypto.randomBytes(18).toString("hex"), to, brief,
+        id: crypto.randomBytes(9).toString("hex"), tok: crypto.randomBytes(18).toString("hex"), key: crypto.randomBytes(18).toString("hex"), to, brief,
         name: String(b.name || "").trim().slice(0, 80), lang: b.lang === "en" ? "en" : "ar",
         voice: /^[A-Za-z]{2,30}$/.test(String(b.voice || "")) ? String(b.voice) : "Kore",
         now: String(b.now || new Date().toISOString()).slice(0, 120),
@@ -376,11 +376,15 @@ const server = http.createServer(async (req, res) => {
       if (mm[2] && req.method === "POST") { if (!c.result) c.result = { outcome: "canceled", summary: "" }; hangup(c); return send(res, 200, { ok: true }); }
       if (req.method === "GET") return send(res, 200, view(c));
     }
-    if (req.method === "POST" && (p === "/twiml" || p === "/status")) {
-      const params = Object.fromEntries(new URLSearchParams(await readBody(req, 65536)));
+    if ((req.method === "POST" || req.method === "GET") && (p === "/twiml" || p === "/status")) {
+      const params = req.method === "POST" ? Object.fromEntries(new URLSearchParams(await readBody(req, 65536))) : {};
       const c = calls.get(u.searchParams.get("id") || "");
-      if (!safeEq(req.headers["x-twilio-signature"] || "", twilioSig(CFG.pub + req.url, params))) { log(c, p + " rejected: bad signature (has header=" + !!req.headers["x-twilio-signature"] + ")"); res.writeHead(403); return res.end("forbidden"); }
-      if (p === "/twiml") log(c, "instructions fetched by provider");
+      /* Accept a correctly signed request, or one carrying this call's own one-time key. */
+      const sig = req.headers["x-twilio-signature"] || "";
+      const okSig = !!sig && safeEq(sig, twilioSig(CFG.pub + req.url, params));
+      const okKey = !!c && safeEq(u.searchParams.get("k") || "", c.key);
+      if (!okSig && !okKey) { log(c, p + " rejected: not signed and no valid call key (has header=" + !!sig + ")"); res.writeHead(403); return res.end("forbidden"); }
+      if (p === "/twiml") log(c, "instructions fetched by provider (" + (okSig ? "signed" : "call key") + ")");
       if (p === "/status") {
         if (c) {
           const s = params.CallStatus;
