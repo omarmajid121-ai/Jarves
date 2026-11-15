@@ -518,13 +518,17 @@ button.tile:active{transform:scale(.97)}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-14.18",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-15.1",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
+var _fetch=window.fetch?window.fetch.bind(window):null;
+function fetchT(u,o,ms){o=o||{};if(!_fetch)return Promise.reject(new Error("net"));if(o.signal||!window.AbortController)return _fetch(u,o);var slow=false;try{slow=!!acBase()&&String(u).indexOf(acBase())===0}catch(e){}
+  var ac=new AbortController(),t=setTimeout(function(){ac.abort()},ms||(slow?70000:/open-meteo|aladhan|bigdatacloud/.test(String(u))?5000:8000));o.signal=ac.signal;return _fetch(u,o).then(function(r){clearTimeout(t);return r},function(e){clearTimeout(t);throw e})}
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
 var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null,anIn=null,anOut=null,outBus=null;
+var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={web_search:17000,assistant_call:75000,confirm_call:75000,show_route:11000};
 var live=false,ready=false,attempt=0,nextT=0,playing=[],dropTurn=false,pendingText="",mode="idle",startedAt=0,userEnded=false;
 var log=[],curMe=null,curAi=null,muted=false;
 try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
@@ -738,7 +742,7 @@ function openSheet(s){var sh=$("#sheet");cIcon($("#sheetIc"),s.icon);sh.dataset.
   sheetFn=s.fn||null;sheetSec=s.second?s.second.fn:null;setBtn($("#sheetGo"),s.goText||"",s.go||"#");setBtn($("#sheetSecond"),s.second?s.second.t:"");
   sh.classList.toggle("has2",!!s.goText&&!!s.second);sh.scrollTop=0;sh.classList.add("on");clearTimeout(actT)}
 function closeSheet(){$("#sheet").classList.remove("on");sheetFn=sheetSec=null}
-function showAction(a){
+function showAction(a){if(a&&!a.skel){closeBrief();if(a.urgent&&$("#card").classList.contains("open"))toast(String(a.title||"").slice(0,60)+(a.tag?" · "+String(a.tag).slice(0,40):""))}
   a=a||{};var type=(BASE[a.type]||GEN[a.type])?a.type:"call";
   var name=cS(a.name,60),num=String(a.number||"").replace(/[^\d+]/g,"").slice(0,20),text=cS(a.text,400);
   var title="",tag="",body="",go="",goText="",real=false,alt=null,blocks=cArr(a.blocks).slice(),lg=LEGACY[type],icon=a.icon||lg[0],tone=a.tone||lg[1],tagTone=a.tagTone||"";
@@ -806,7 +810,7 @@ function getLoc(cb,force){
   var tm=setTimeout(fin,20000);
   navigator.geolocation.getCurrentPosition(function(pos){
     var c=pos.coords,rec={lat:c.latitude,lon:c.longitude,t:Date.now()};
-    fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+c.latitude+"&longitude="+c.longitude+"&localityLanguage="+(isEn()?"en":"ar"))
+    fetchT("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+c.latitude+"&longitude="+c.longitude+"&localityLanguage="+(isEn()?"en":"ar"))
       .then(function(r){return r.json()}).then(function(d){rec.city=d.city||d.locality||"";rec.region=d.principalSubdivision||"";rec.country=d.countryName||""})
       .catch(function(){}).then(function(){set(K.loc,JSON.stringify(rec));clearTimeout(tm);fin();showLoc()})
   },function(){clearTimeout(tm);fin()},{enableHighAccuracy:false,timeout:15000,maximumAge:600000})}
@@ -822,7 +826,7 @@ function promptEn(){
   "For anything current or that can change (news, prices, currencies, opening hours, places, sports, people, events) call web_search first and answer only from what it returns; never answer such things from memory. Say two or three words such as \"one moment\" before you call it. One focused question per call; for a comparison or a trip make several calls in the same turn. If it returns not found or an error, say so plainly. If he asks where something is from, name the sources or call show_sources. Weather and prayer times come from today_data. If you need his location and it is not given above, call get_location.\n"+
   "For weather or prayer-time questions call today_data with show set to weather or prayer, and answer by voice from it. Call show_brief only when he asks for his daily brief or to see the cards.\n"+
   "Portfolio: when he says he bought or sold shares, or sets a price target, call portfolio_update at once and confirm in one sentence. When he asks about his portfolio or a stock he holds, call web_search with kind price for the latest price of each holding, in the same turn, then call show_portfolio with the quotes you found, and tell him the price, his gain or loss against his cost, and the distance to his target. Say prices may be delayed. Never recommend buying, selling or holding and never predict prices; if he asks whether to buy or sell, say the decision is his and give facts only. Use the same stock name already in the portfolio.\n"+pfLine(true)+
-  "Documents: he can keep a boarding pass, hotel booking or event ticket on this phone. To add one call doc_add; he taps camera, photo or PDF on the card. After an upload the app tells you what it read: say the key details in one sentence, ask whether to save it, then call doc_confirm. To show one call doc_show with its kind, and full true when he is at the gate or wants it scanned. When he asks about his own flight or booking, check doc_list before answering. Fix a wrongly read detail with doc_update. Do not read a booking code aloud unless he asks. Passports, identity cards and bank cards are not kept.\n"+
+  "Documents: he can keep a boarding pass, hotel booking or event ticket on this phone. To add one call doc_add; he taps camera, photo or PDF on the card. After an upload the app tells you what it read: say the key details in one sentence, ask whether to save it, then call doc_confirm. To show one call doc_show with its kind, and full true when he is at the gate or wants it scanned. When he asks about his own flight or booking, check doc_list before answering. Fix a wrongly read detail with doc_update. Deleting a meeting or a document always shows a confirm card first: ask him, then call confirm_delete with his answer; he can also tap. Do not read a booking code aloud unless he asks. Passports, identity cards and bank cards are not kept.\n"+
   (past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
 function prompt(){
   if(isEn())return promptEn();
@@ -836,7 +840,7 @@ function prompt(){
   "أي معلومة حالية أو تتغير (أخبار، أسعار، عملات، أوقات دوام، أماكن، رياضة، أشخاص، فعاليات) استدعي web_search أول وجاوبي من نتيجته بس، ولا تجاوبين من ذاكرتك. قولي كلمتين مثل «لحظة أشوف لك» قبل تستدعينها. سؤال واحد محدد في كل استدعاء، وللمقارنة أو الرحلة استدعيها أكثر من مرة في نفس الدور. إذا رجعت بدون نتيجة أو بخطأ قوليها بوضوح. وإذا سأل عن المصدر اذكريه أو استدعي show_sources. الطقس ومواقيت الصلاة من today_data. وإذا احتجتي موقعه وما هو مذكور فوق، استخدمي get_location.\n"+
   "إذا سأل عن الطقس أو مواقيت الصلاة استخدمي today_data مع show بقيمة weather أو prayer، وجاوبيه بصوتك منها. واستخدمي show_brief فقط إذا طلب ملخص يومه أو طلب يشوف البطاقات.\n"+
   "المحفظة: إذا قال إنه شرى أو باع أسهم أو حدد هدف سعر، استخدمي portfolio_update على طول وأكدي له بجملة. وإذا سأل عن محفظته أو عن سهم عنده، استدعي web_search بنوع price لآخر سعر لكل سهم في نفس الدور، ثم استخدمي show_portfolio ومرري الأسعار اللي لقيتيها، وقولي له السعر وربحه أو خسارته عن سعر شرائه وكم باقي على هدفه. نبهيه إن الأسعار ممكن تكون متأخرة. ممنوع تعطين توصية شراء أو بيع أو تتوقعين سعر؛ وإذا سألك «أبيع ولا أشتري؟» قولي إن القرار له وأعطيه الحقائق بس. استخدمي نفس اسم السهم الموجود في المحفظة.\n"+pfLine(false)+
-  "الوثائق: يقدر يحفظ بطاقة صعود أو حجز فندق أو تذكرة على جواله. للإضافة استدعي doc_add وهو يضغط الكاميرا أو الصور أو ملف PDF على البطاقة. بعد الرفع التطبيق يعطيك اللي قرأه: قولي أهم التفاصيل بجملة، واسأليه يحفظها، ثم استدعي doc_confirm. للعرض استدعي doc_show مع النوع، ومع full true إذا كان عند البوابة أو يبي يمسحها. إذا سأل عن رحلته أو حجزه شوفي doc_list قبل تجاوبين. إذا فيه معلومة انقرأت غلط صحّحيها بـ doc_update. لا تقرين رمز الحجز بصوت عالي إلا إذا طلب. الجوازات والهويات وبطاقات البنك ما تنحفظ.\n"+
+  "الوثائق: يقدر يحفظ بطاقة صعود أو حجز فندق أو تذكرة على جواله. للإضافة استدعي doc_add وهو يضغط الكاميرا أو الصور أو ملف PDF على البطاقة. بعد الرفع التطبيق يعطيك اللي قرأه: قولي أهم التفاصيل بجملة، واسأليه يحفظها، ثم استدعي doc_confirm. للعرض استدعي doc_show مع النوع، ومع full true إذا كان عند البوابة أو يبي يمسحها. إذا سأل عن رحلته أو حجزه شوفي doc_list قبل تجاوبين. إذا فيه معلومة انقرأت غلط صحّحيها بـ doc_update. حذف أي موعد أو وثيقة يطلّع بطاقة تأكيد أول: اسأليه، ثم استدعي confirm_delete بجوابه؛ ويقدر يضغط «احذف» بنفسه. لا تقرين رمز الحجز بصوت عالي إلا إذا طلب. الجوازات والهويات وبطاقات البنك ما تنحفظ.\n"+
   (past?"آخر ما دار بينكم سابقاً (للتذكر فقط):\n"+past+"\n":"")}
 
 /* ================= audio ================= */
@@ -894,10 +898,15 @@ function setupMsg(){
       parameters:{type:"OBJECT",properties:{quotes:{type:"ARRAY",items:{type:"OBJECT",properties:{name:{type:"STRING"},price:{type:"NUMBER"}},required:["name","price"]}}}}}].concat(XDECL)}];
   if(s.tools&&MODEL===MODEL_NEW)s.tools[0].functionDeclarations=s.tools[0].functionDeclarations.map(function(f){f=Object.assign({},f);f.behavior="BLOCKING";return f});
   if(attempt===0&&s.tools&&MODEL!==MODEL_NEW)s.tools.unshift({googleSearch:{}});
+  rsSent=false;if(attempt===0){s.contextWindowCompression={slidingWindow:{}};if(resumeTry&&rs&&rs.model===MODEL&&Date.now()-rs.t<6600000){s.sessionResumption={handle:rs.h};rsSent=true}else s.sessionResumption={}}
   return {setup:s}}
+function softConnect(){try{if(ws){ws.onclose=null;ws.onmessage=null;ws.close()}}catch(e){}ws=null;ready=false;attempt=0;resumeTry=true;wantSwap=false;setMode("connect");connect()}
+function trySwap(){if(!wantSwap||!live||!ready||toolBusy>0||speaking())return;softConnect()}
 function connect(){
   ready=false;
   ws=new WebSocket(WS+encodeURIComponent(get(K.key)));ws.binaryType="arraybuffer";
+  var w0=ws;clearTimeout(connT);connT=setTimeout(function(){if(!live||ready||ws!==w0)return;DG.errs.push("#"+attempt+" no answer in 10 s");try{w0.onclose=null;w0.onmessage=null;w0.close()}catch(e){}
+    if(attempt<1){attempt++;connect()}else{stop();note("تعذّر الاتصال بخدمة الصوت. تحقق من الإنترنت ثم اضغط على الشاشة للمحاولة.")}},10000);
   ws.onopen=function(){ws.send(JSON.stringify(setupMsg()))};
   ws.onmessage=function(ev){var d=ev.data;
     if(typeof d!=="string"){try{d=new TextDecoder().decode(d)}catch(e){return}}
@@ -909,34 +918,40 @@ function connect(){
     if(!ready&&MODEL===MODEL_NEW&&attempt>=1&&ev.reason&&!/API key|key not valid|unauth|quota|exhaust|rate/i.test(ev.reason)){set(K.lm,JSON.stringify({m:"old",why:"auto",t:Date.now(),err:String(ev.reason).slice(0,120)}));MODEL=MODEL_OLD;attempt=0;connect();return}
     if(!ready&&attempt<3&&!/API key|key not valid|unauth/i.test(ev.reason||"")){attempt++;connect();return}
     var why=ev.reason||"",wasReady=ready,lasted=Date.now()-startedAt;
+    if(wasReady&&!document.hidden&&rsFail<3&&!/API key|key not valid|permission|unauth|quota|exhaust|rate/i.test(why)){rsFail++;setTimeout(function(){rsFail=Math.max(0,rsFail-1)},90000);DG.rs=(DG.rs||0)+1;softConnect();return}
     stop();
     if(/API key|key not valid|permission|unauth/i.test(why)){note("المفتاح غير صالح. أدخل مفتاحًا جديدًا من الإعدادات.");openCard("set")}
     else if(/quota|exhaust|rate/i.test(why))note("تم بلوغ الحد المجاني. حاول لاحقًا.");
-    else if(wasReady&&lasted>20000&&!document.hidden){start()}
-    else if(wasReady)note("انتهت الجلسة. اضغط للمتابعة.");
+    else if(wasReady)note(document.hidden?"انتهت الجلسة. اضغط للمتابعة.":"انقطع الاتصال أكثر من مرة. اضغط على الشاشة للمتابعة.");
     else note("تعذّر الاتصال. "+(why?"السبب: "+why:"تحقق من الإنترنت ومن المفتاح."))}}
 function handle(m){
-  if(m.setupComplete){ready=true;startedAt=Date.now();startMic();setMode("listen");DG.lvl=attempt;showDiag();if(get(K.key))gemPick(get(K.key).trim());
+  if(m.sessionResumptionUpdate){var ru=m.sessionResumptionUpdate;if(ru.resumable&&ru.newHandle)rs={h:String(ru.newHandle),t:Date.now(),model:MODEL}}
+  if(m.goAway){wantSwap=true;trySwap()}
+  if(m.setupComplete){clearTimeout(connT);ready=true;startedAt=Date.now();if(!proc)startMic();setMode("listen");DG.lvl=attempt;showDiag();if(get(K.key))gemPick(get(K.key).trim());
     if(attempt>=2)toast("الأوامر غير مفعّلة في هذه الجلسة. افتح الإعدادات ثم «الحالة».");
-    var first=pendingText||(isEn()?"(Session start) Greet me in one short sentence and ask how you can help.":(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج."));
+    var again=resumeTry||reconn;if(resumeTry&&rsSent&&attempt===0)DG.rsOk=(DG.rsOk||0)+1;resumeTry=false;reconn=false;rsSent=false;
+    var first=pendingText||(again?"":(isEn()?"(Session start) Greet me in one short sentence and ask how you can help.":(log.length?"(رجعت لك) رحّبي فيني بكلمتين وكمّلي معي.":"(بداية أول جلسة) رحّبي بي بجملة قصيرة واسأليني وش أحتاج.")));
     if(pendingText){curMe=bubble("me",pendingText);pendingText=""}
-    ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
+    if(first)ws.send(JSON.stringify({realtimeInput:{text:first}}));return}
   if(m.toolCall&&m.toolCall.functionCalls){var fcs=m.toolCall.functionCalls,pend=fcs.length,out=[];DG.calls+=fcs.length;DG.last=fcs.map(function(x){return x.name}).join(", ");showDiag();
-    var done=function(){if(--pend===0&&ws&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:out}}))};
-    fcs.forEach(function(fc,ix){var fin=false,cb=function(r){if(fin)return;fin=true;out[ix]={id:fc.id,name:fc.name,response:r||{}};done()},fn=TOOLS[fc.name];
-      if(!fn){cb({error:"unknown tool"});return}try{fn(fc.args||{},cb)}catch(e){cb({error:"failed"})}});return}
+    var mine=ws,done=function(){if(--pend===0){toolBusy=Math.max(0,toolBusy-1);if(ws&&ws===mine&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:out}}));trySwap()}};
+    toolBusy++;
+    fcs.forEach(function(fc,ix){var fin=false,tm=0,cb=function(r){if(fin)return;fin=true;clearTimeout(tm);out[ix]={id:fc.id,name:fc.name,response:r||{}};done()},fn=TOOLS[fc.name];
+      if(!fn){cb({error:"unknown tool"});return}
+      tm=setTimeout(function(){cb({error:"timeout",tell_user:"That did not finish in time. Tell him so in one short sentence and offer to try again."})},TLIM[fc.name]||10000);
+      try{fn(fc.args||{},cb)}catch(e){cb({error:"failed"})}});return}
   var sc=m.serverContent;if(!sc)return;
   if(sc.interrupted){flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
-  if(sc.inputTranscription&&sc.inputTranscription.text){if(acPend&&sc.inputTranscription.text.trim())acPend.heard=true;if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.inputTranscription&&sc.inputTranscription.text){if(acPend&&sc.inputTranscription.text.trim())acPend.heard=true;if(delPend&&delPend.armed&&sc.inputTranscription.text.trim())delPend.heard=true;if(!curMe){curMe=bubble("me","")}curMe.textContent+=sc.inputTranscription.text;$("#msgs").scrollTop=1e7}
   if(sc.outputTranscription&&sc.outputTranscription.text){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7}
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn){sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
-  if(sc.turnComplete){dropTurn=false;endTurn();infoWatch()}}
+  if(sc.turnComplete){dropTurn=false;endTurn();infoWatch();if(delPend)delPend.armed=true;trySwap()}}
 function start(){
   if(live)return;
   if(!get(K.key)){openCard("set");return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}
-  live=true;userEnded=false;attempt=0;MODEL=modelPick();DG.errs=[];DG.lvl=-1;setMode("connect");$("#caption").textContent="";
+  live=true;userEnded=false;attempt=0;MODEL=modelPick();resumeTry=reconn=resumeNext;resumeNext=false;if(!resumeTry)rs=null;wantSwap=false;DG.errs=[];DG.lvl=-1;setMode("connect");$("#caption").textContent="";
   try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){live=false;setMode("idle");note("تعذّر تشغيل الصوت في هذا المتصفح.");return}
   buildGraph();ctx.resume().catch(function(){});
   try{if(navigator.audioSession)navigator.audioSession.type="play-and-record"}catch(e){}
@@ -946,7 +961,7 @@ function start(){
     try{if(navigator.wakeLock)navigator.wakeLock.request("screen").then(function(w){wake=w},function(){})}catch(e){}
   },function(){live=false;setMode("idle");note("اسمح باستخدام الميكروفون ثم اضغط على الشاشة.")})}
 function stop(){
-  live=false;ready=false;endTurn();flush();dropTurn=false;muted=false;document.body.classList.remove("muted");
+  clearTimeout(connT);live=false;ready=false;endTurn();flush();dropTurn=false;muted=false;document.body.classList.remove("muted");
   try{if(ws){ws.onclose=null;ws.close()}}catch(e){}ws=null;
   try{if(proc){proc.onaudioprocess=null;proc.disconnect()}if(src)src.disconnect();if(mute)mute.disconnect()}catch(e){}proc=src=mute=null;
   try{if(mic)mic.getTracks().forEach(function(t){t.stop()})}catch(e){}mic=null;
@@ -1007,6 +1022,7 @@ function renderPf(){var a=pfGet(),ul=$("#pfList"),tc=0;ul.textContent="";ul.hidd
 var pfArm=0;
 $("#pfClear").onclick=function(){var b=this;if(Date.now()-pfArm<4000){var prev=pfGet();pfSet([]);renderPf();b.textContent="مسح المحفظة";pfArm=0;toast("مُسحت المحفظة",function(){pfSet(prev);renderPf()})}
   else{pfArm=Date.now();b.textContent="اضغط مرة أخرى للتأكيد";setTimeout(function(){b.textContent="مسح المحفظة"},4000)}};
+function tell(ar,en,shown){if(live&&ready)sendText(isEn()?en:ar,shown)}
 function sendText(v,shown){if(live&&ready){if(speaking())flush();endTurn();curMe=bubble("me",shown||v);ws.send(JSON.stringify({realtimeInput:{text:v}}))}else{pendingText=v;start()}}
 
 /* ================= today ================= */
@@ -1067,9 +1083,9 @@ function loadBrief(cb){if(cb)BR.cbs.push(cb);var fin=function(){BR.busy=false;re
   BR.busy=true;renderBrief();
   getLoc(function(){var o=locObj();if(!o){fin();return}
     var q="latitude="+o.lat.toFixed(3)+"&longitude="+o.lon.toFixed(3),d=new Date(),dd=("0"+d.getDate()).slice(-2)+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+d.getFullYear(),n=gtok()?4:3,one=function(){if(--n===0){BR.t=Date.now();fin()}};
-    fetch("https://api.open-meteo.com/v1/forecast?"+q+"&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1").then(function(r){return r.json()})
+    fetchT("https://api.open-meteo.com/v1/forecast?"+q+"&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1").then(function(r){return r.json()})
       .then(function(j){BR.w={t:j.current.temperature_2m,c:j.current.weather_code,hi:j.daily.temperature_2m_max[0],lo:j.daily.temperature_2m_min[0]}}).catch(function(){BR.w=null}).then(one);
-    fetch("https://api.aladhan.com/v1/timings/"+dd+"?"+q).then(function(r){return r.json()}).then(function(j){BR.p=j.data.timings}).catch(function(){BR.p=null}).then(one);
+    fetchT("https://api.aladhan.com/v1/timings/"+dd+"?"+q).then(function(r){return r.json()}).then(function(j){BR.p=j.data.timings}).catch(function(){BR.p=null}).then(one);
     TOOLS.calendar_list({days:2},function(r){BR.ev=(r&&r.events&&r.events.length)?r.events:(gtok()?[]:null);one()});if(gtok()){TOOLS.email_list({max:3},function(r){BR.mail=(r&&r.emails)||null;one()})}else{BR.mail=null}})}
 function openBrief(cb){closeAll();$("#brief").classList.add("on");renderBrief();loadBrief(cb)}
 function closeBrief(){$("#brief").classList.remove("on")}
@@ -1107,7 +1123,7 @@ function showG(){var on=!!gtok();if($("#gState")){$("#gState").textContent=on?"�
 function gConnect(){var id=gid();if(!/\.apps\.googleusercontent\.com$/.test(id)){openCard("set");toast("أدخل معرّف Google في الإعدادات أولًا");return}
   var st=Math.random().toString(36).slice(2)+Date.now().toString(36);set("musaed.gst",st);
   location.href="https://accounts.google.com/o/oauth2/v2/auth?client_id="+encodeURIComponent(id)+"&redirect_uri="+encodeURIComponent(location.origin+location.pathname)+"&response_type=token&include_granted_scopes=true&scope="+encodeURIComponent(GSCOPE)+"&state="+st}
-function gDisconnect(){var t=gtok();set(K.gtok,"");BR.ev=BR.mail=null;BR.t=0;if(t)fetch("https://oauth2.googleapis.com/revoke?token="+encodeURIComponent(t),{method:"POST"}).catch(function(){});showG();toast("أُلغي ربط Google")}
+function gDisconnect(){var t=gtok();set(K.gtok,"");BR.ev=BR.mail=null;BR.t=0;if(t)fetchT("https://oauth2.googleapis.com/revoke?token="+encodeURIComponent(t),{method:"POST"}).catch(function(){});showG();toast("أُلغي ربط Google")}
 var gJust=false;
 (function(){var h=location.hash||"";if(h.indexOf("access_token=")<0&&h.indexOf("error=")<0)return;var q={};h.slice(1).split("&").forEach(function(x){var i=x.indexOf("=");if(i>0)q[decodeURIComponent(x.slice(0,i))]=decodeURIComponent(x.slice(i+1).replace(/\+/g," "))});
   try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
@@ -1115,7 +1131,7 @@ var gJust=false;
 function needG(){if(gQuiet)return;showAction({type:"google",key:"google",title:"ربط حساب Google",tag:"مطلوب للمتابعة",body:"للتقويم والبريد والمهام وجهات الاتصال.",go:"#",goText:"ربط",fn:gConnect})}
 function gapi(method,url,body,cb){var t=gtok();if(!t){needG();cb({error:"google_not_connected",tell_user:"Google is not connected or the session ended. A Connect button is on screen; ask him to tap it."},null);return}
   var h={"Authorization":"Bearer "+t};if(body)h["Content-Type"]="application/json";
-  fetch(url,{method:method,headers:h,body:body?JSON.stringify(body):undefined})
+  fetchT(url,{method:method,headers:h,body:body?JSON.stringify(body):undefined})
     .then(function(r){if(r.status===204)return {ok:true,j:{}};return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,st:r.status,j:j}})})
     .then(function(x){if(x.ok)return cb(null,x.j);if(x.st===401){set(K.gtok,"");showG();needG();return cb({error:"google_not_connected",tell_user:"The Google session ended. Ask him to tap Connect on screen."},null)}
       cb({error:"google_error",status:x.st,message:String((x.j&&x.j.error&&x.j.error.message)||"").slice(0,200)},null)})
@@ -1146,7 +1162,8 @@ function agRow(x){var d=new Date(x.start),k=KIND[x.kind]||KIND.appointment,all=S
 function calSave(o,label,cb){var s=o.s.getTime(),c;
   if(o.kind!=="reminder"&&!o.allow){c=calClash(s,o.mins);if(c.length){
     showAction({type:"card",key:"clash",icon:"warn",tone:"ask",tagTone:"ask",title:"موعدان في وقت واحد",tag:"يحتاج قرارك",closeText:"إلغاء",keep:true,blocks:[{t:"agenda",rows:[agRow({start:locISO(o.s),title:o.title,kind:o.kind,location:o.loc})].concat(c.map(function(x){return agRow(calView(x))}))}],
-      go:"#",goText:"احفظي الاثنين",fn:function(){o.allow=true;calSave(o,label,function(){})}});
+      go:"#",goText:"احفظي الاثنين",fn:function(){o.allow=true;calSave(o,label,function(){});tell("(اخترت «احفظي الاثنين» من البطاقة وانحفظ: "+o.title+") أكّدي لي بكلمتين.","(I tapped Keep both on the card; saved: "+o.title+".) Confirm in a few words.","احفظي الاثنين")},
+      closeFn:function(){tell("(ضغطت «إلغاء» على بطاقة التعارض؛ الموعد الجديد ما انحفظ) قولي تمام، واسأليني إذا أبغى وقت ثاني.","(I tapped Cancel on the clash card; the new one was not saved.) Acknowledge, and ask if I want another time.","إلغاء")}});
     return cb({saved:false,clash:true,clashes_with:c.map(calView),note:"Not saved. It overlaps what is listed. Ask him: choose another time, move the other one, or keep both (then call again with allow_clash true). A card is on screen."})}}
   var it={id:"L"+Date.now().toString(36)+Math.floor(Math.random()*900+100),title:o.title,s:s,mins:o.mins,kind:o.kind,loc:o.loc||"",notes:o.notes||"",gid:""},a=calGet();a.push(it);calSet(a);
   toast(label+": "+o.title,function(){calSet(calGet().filter(function(x){return x.id!==it.id}));if(it.gid)gapiQ("DELETE",CALU+"/"+encodeURIComponent(it.gid),null,function(){})});
@@ -1172,15 +1189,23 @@ TOOLS.calendar_update=function(a,cb){a=a||{};var raw=cS(a.event_id,200);if(!raw)
     if(a.title)b.summary=String(a.title).slice(0,200);if(a.location)b.location=String(a.location).slice(0,200);
     if(a.start){s=pDate(a.start);if(isNaN(s))return cb({error:"start is not a valid time"});mins=+a.minutes||Math.max(5,Math.round((Date.parse(old.end&&old.end.dateTime)-Date.parse(old.start&&old.start.dateTime))/60000)||60);var t=evTimes(s,mins);b.start=t.start;b.end=t.end}
     gapi("PATCH",CALU+"/"+id,b,function(e2,j){if(e2)return cb(e2);BR.t=0;toast("عُدّل الموعد: "+(j.summary||""),function(){gapi("PATCH",CALU+"/"+id,undo,function(){BR.t=0})});cb({ok:true,event:evBrief(j)})})})};
-function delCard(b,run){var d=new Date(b.start);showAction({type:"confirm",key:"del|"+b.id,title:"حذف الموعد؟",tag:"لا يمكن استرجاعه",tagTone:"danger",closeText:"تراجع",blocks:[{t:"kv",rows:[["الموعد",b.title||"بدون عنوان"]].concat(isNaN(d)?[]:[["الوقت",whenText(d)]])}],go:"#",goText:"احذف",fn:run})}
+function delAsk(key,q,title,rows,run){delPend={key:key,title:title,run:run,t:Date.now(),armed:false,heard:false};
+  showAction({type:"confirm",key:key,title:q,tag:"لا يمكن استرجاعه",tagTone:"danger",closeText:"تراجع",blocks:[{t:"kv",rows:rows}],go:"#",goText:"احذف",
+    fn:function(){delPend=null;run();tell("(ضغطت «احذف» على البطاقة وانحذف: "+title+") أكّدي لي بكلمتين.","(I tapped Delete on the card; deleted: "+title+".) Confirm in a few words.","حذف: "+title)},
+    closeFn:function(){if(delPend&&delPend.key===key){delPend=null;tell("(تراجعت عن الحذف؛ ما انحذف شي) قولي تمام بكلمة.","(I cancelled the delete; nothing was deleted.) Acknowledge in a word.","تراجع عن الحذف")}}})}
+TOOLS.confirm_delete=function(a,cb){var p=delPend;if(!p||Date.now()-p.t>120000){delPend=null;return cb({error:"Nothing is waiting to be deleted. Call calendar_delete or doc_delete first."})}
+  if(a&&a.confirm===false){delPend=null;if(curCard&&curCard._key===p.key)closeAction();return cb({cancelled:true,note:"Nothing was deleted."})}
+  if(!p.heard)return cb({error:"He has not answered yet. Ask him to say yes or to tap Delete, then wait for his answer."});
+  delPend=null;if(curCard&&curCard._key===p.key)closeAction();p.run();cb({deleted:true,what:p.title})};
+function delCard(b,run){var d=new Date(b.start);delAsk("del|"+b.id,"حذف الموعد؟",b.title||"بدون عنوان",[["الموعد",b.title||"بدون عنوان"]].concat(isNaN(d)?[]:[["الوقت",whenText(d)]]),run)}
 TOOLS.calendar_delete=function(a,cb){a=a||{};var raw=cS(a.event_id,200);if(!raw)return cb({error:"event_id is required; get it from calendar_list"});
   if(/^L/.test(raw)){var f=calFind(raw);if(!f)return cb({error:"event not found"});var v=calView(f.x),gid=f.x.gid;
     delCard(v,function(){calSet(calGet().filter(function(x){return x.id!==raw}));if(gid)gapiQ("DELETE",CALU+"/"+encodeURIComponent(gid),null,function(){});toast("حُذف الموعد: "+v.title)});
-    return cb({awaiting_user_confirmation:true,event:v,note:"A confirm card is on screen. It is deleted only if he taps Delete."})}
+    return cb({awaiting_user_confirmation:true,event:v,note:"A confirm card is on screen. Ask him. If he says yes call confirm_delete with confirm true; if he says no, with confirm false. He can also tap Delete."})}
   var id=encodeURIComponent(raw);
   gapi("GET",CALU+"/"+id,null,function(err,ev){if(err)return cb(err);var b=evBrief(ev);
     delCard(b,function(){gapi("DELETE",CALU+"/"+id,null,function(e2){BR.t=0;toast(e2?"تعذّر حذف الموعد":"حُذف الموعد: "+b.title)})});
-    cb({awaiting_user_confirmation:true,event:b,note:"A confirm card is on screen. It is deleted only if he taps Delete."})})};
+    cb({awaiting_user_confirmation:true,event:b,note:"A confirm card is on screen. Ask him. If he says yes call confirm_delete with confirm true; if he says no, with confirm false. He can also tap Delete."})})};
 function calDone(id){var f=calFind(id);if(!f)return false;f.x.done=1;calSet(f.a);if(f.x.gid)gapiQ("DELETE",CALU+"/"+encodeURIComponent(f.x.gid),null,function(){});return f.x.title}
 TOOLS.reminder_done=function(a,cb){var t=calDone(cS(a&&a.event_id,200));if(t===false)return cb({error:"reminder not found; get its id from calendar_list"});toast("تم: "+t);if(curCard&&/^rem\|/.test(curCard._key||""))closeAction();cb({ok:true})};
 function dayLabel(d){try{return d.toLocaleDateString("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",day:"numeric",month:"long"})}catch(e){return locISO(d).slice(0,10)}}
@@ -1195,10 +1220,10 @@ TOOLS.show_agenda=function(a,cb){a=a||{};var d0=a.date?pDate(String(a.date).leng
     showAction({type:"card",key:"agenda",icon:"calendar",tone:"open",title:(isToday?"يومك · ":"")+dayLabel(d0),tag:tag,blocks:[{t:"week",items:week},today.length?{t:"agenda",rows:today.slice(0,5).map(agRow)}:{t:"text",x:"ما فيه شي مسجّل في هذا اليوم."}],go:"#",goText:"أضيفي موعد",fn:add,second:{t:"الأسبوع",fn:sheet}});
     if(a.range==="week")sheet();
     cb({shown:true,day:today,next_7_days:ev,stored:calStored(),note:"The calendar card is on screen. Say the day briefly; do not read every line."})})};
-function remindCard(x){var id=x.id;showAction({type:"card",key:"rem|"+id,icon:"clock",tone:"go",tagTone:"ask",title:x.title,tag:"تذكير · حان وقته",keep:true,blocks:[{t:"kv",rows:[["الموعد",whenText(new Date(x.s))]]}],go:"#",goText:"تم",fn:function(){var t=calDone(id);if(t!==false)toast("تم: "+t)},
+function remindCard(x){var id=x.id;showAction({urgent:true,type:"card",key:"rem|"+id,icon:"clock",tone:"go",tagTone:"ask",title:x.title,tag:"تذكير · حان وقته",keep:true,blocks:[{t:"kv",rows:[["الموعد",whenText(new Date(x.s))]]}],go:"#",goText:"تم",fn:function(){var t=calDone(id);if(t!==false)toast("تم: "+t)},
     second:{t:"بعد ساعة",fn:function(){var f=calFind(id);if(f){f.x.s=Date.now()+3600000;f.x.fired=0;calSet(f.a);if(f.x.gid){var t=evTimes(new Date(f.x.s),f.x.mins);gapiQ("PATCH",CALU+"/"+encodeURIComponent(f.x.gid),{start:t.start,end:t.end},function(){})}toast("أذكّرك بعد ساعة")}closeAction()}}});
   if(live&&ready)sendText(isEn()?"(A reminder is due now) "+x.title+". Tell me in one short sentence.":"(تذكير حان وقته) "+x.title+". قوليه لي بجملة قصيرة.","تذكير: "+x.title)}
-function soonCard(x){showAction({type:"card",key:"soon|"+x.id,icon:"calendar",tone:"info",tagTone:"ask",info:true,title:x.title,tag:(KIND[x.kind]||KIND.appointment)[0]+" · بعد 10 دقائق",blocks:[{t:"kv",rows:[["الوقت",whenText(new Date(x.s))]].concat(x.loc?[["المكان",x.loc]]:[])}]});
+function soonCard(x){showAction({urgent:true,type:"card",key:"soon|"+x.id,icon:"calendar",tone:"info",tagTone:"ask",info:true,title:x.title,tag:(KIND[x.kind]||KIND.appointment)[0]+" · بعد 10 دقائق",blocks:[{t:"kv",rows:[["الوقت",whenText(new Date(x.s))]].concat(x.loc?[["المكان",x.loc]]:[])}]});
   if(live&&ready)sendText(isEn()?"(Heads-up) "+x.title+" starts in 10 minutes. Tell me in one short sentence.":"(تنبيه) "+x.title+" بعد عشر دقايق. قوليه لي بجملة قصيرة.","بعد 10 دقائق: "+x.title)}
 function calTick(){var now=Date.now(),a=calGet(),ch=false,due=null,soon=null;a.forEach(function(x){if(x.done)return;
     if(x.kind==="reminder"){if(!x.fired&&x.s<=now&&x.s>now-12*36e5){x.fired=1;ch=true;due=due||x}}
@@ -1309,7 +1334,7 @@ function devLine(en){var a=devGet();if(!a.length)return en?"He has no connected 
 function devNorm(x){return String(x||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/[^\u0621-\u064Aa-z0-9]+/g," ").trim().split(" ").map(function(w){return w.replace(/^ال(?=..)/,"")})}
 function devFind(list,q){var ws=devNorm(q).filter(function(w){return w.length>1&&!/^(شغل|شغلي|افتح|افتحي|طف|طفي|سكر|سكري|نفذ|نفذي|لي|run|start|turn|open|on|off|the|my)$/.test(w)}),best=-1,bs=0,tie=false;if(!ws.length)return -1;
   list.forEach(function(d,i){var t=" "+devNorm(d.n+" "+d.v+" "+(d.h||"")).join(" "),n=0;ws.forEach(function(w){if(t.indexOf(" "+w)>=0)n++});if(n>bs){bs=n;best=i;tie=false}else if(n&&n===bs)tie=true});return tie?-1:best}
-function devRun(d){fetch(d.v,{method:"POST",mode:"no-cors"}).then(function(){toast("نُفّذ: "+d.n)},function(){toast("تعذّر تنفيذ: "+d.n)})}
+function devRun(d){fetchT(d.v,{method:"POST",mode:"no-cors"}).then(function(){toast("نُفّذ: "+d.n)},function(){toast("تعذّر تنفيذ: "+d.n)})}
 TOOLS.device_action=function(a,cb){var list=devGet(),i=pfFind(list.map(function(d){return {name:d.n,symbol:""}}),a.name,""),d=list[i>=0?i:devFind(list,a.name)];
   if(!d)return cb({error:"no matching action",available:list.map(function(x){return x.n}),tell_user:"Ask him to add it under Settings, Connected devices."});
   if(d.t==="hook"&&!d.c){devRun(d);return cb({sent:true,name:d.n})}
@@ -1324,7 +1349,7 @@ var ACOUT={done:"تمّت",partly:"تمّت جزئيًا",not_done:"لم تتم"
   ACERR={unauthorized:"كلمة السر غير صحيحة. راجعها في الإعدادات.",not_ready:"الخادم ناقص الإعداد.",trial_unverified:"الحساب التجريبي يتصل فقط بالأرقام الموثّقة في Twilio.",country_not_enabled:"الاتصال بهذه الدولة غير مفعّل في Twilio.",daily_limit:"وصلت الحد اليومي للمكالمات.",call_in_progress:"فيه مكالمة جارية الآن.",bad_number:"الرقم غير صالح. اكتبه مع مفتاح الدولة.",brief_required:"المهمة ناقصة.",provider_error:"رفض مزوّد الخط المكالمة.",unreachable:"تعذّر الوصول إلى الخادم."},acBusy=false;
 function acRun(o){if(acBusy){toast(ACERR.call_in_progress);return}acBusy=true;
   var base=acBase(),H={"Authorization":"Bearer "+get(K.ck),"Content-Type":"application/json"},id="",last="",tries=0;
-  function card(tag,body,canEnd,talk){showAction({type:"confirm",key:"acall",icon:"phone",tagTone:"go",typed:false,title:talk?"المكالمة جارية · "+o.name:"مكالمة مساعد · "+o.name,tag:tag,blocks:(talk?[{t:"wave"}]:[]).concat([{t:"text",x:body}]),keep:true,go:canEnd?"#":"",goText:"إنهاء المكالمة",fn:canEnd?function(){fetch(base+"/call/"+id+"/hangup",{method:"POST",headers:H}).catch(function(){});toast("جارٍ إنهاء المكالمة")}:null})}
+  function card(tag,body,canEnd,talk){showAction({type:"confirm",key:"acall",icon:"phone",tagTone:"go",typed:false,title:talk?"المكالمة جارية · "+o.name:"مكالمة مساعد · "+o.name,tag:tag,blocks:(talk?[{t:"wave"}]:[]).concat([{t:"text",x:body}]),keep:true,go:canEnd?"#":"",goText:"إنهاء المكالمة",fn:canEnd?function(){fetchT(base+"/call/"+id+"/hangup",{method:"POST",headers:H}).catch(function(){});toast("جارٍ إنهاء المكالمة")}:null})}
   function fail(j){acBusy=false;j=j||{};var t=ACERR[j.error]||("تعذّرت المكالمة"+(j.error?": "+j.error:"")),extra=j.error==="daily_limit"&&j.limit?" ("+j.limit+")":j.provider_message?"\n"+String(j.provider_message).slice(0,200):"";
     showAction({type:"acall",key:"acall",icon:"warn",tone:"ask",tagTone:"ask",title:"لم تبدأ المكالمة · "+o.name,tag:"تعذّر",blocks:[{t:"text",x:t+extra}],keep:true,go:"#",goText:"حاولي مرة ثانية",fn:function(){acRun(o)}});
     sendText((isEn()?"(Call result) The call to "+o.name+" did not start. Reason: ":"(نتيجة المكالمة) المكالمة مع "+o.name+" ما بدأت. السبب: ")+t,"لم تبدأ المكالمة")}
@@ -1336,13 +1361,13 @@ function acRun(o){if(acBusy){toast(ACERR.call_in_progress);return}acBusy=true;
     showAction(rc);
     var n=lsArr(K.notes);n.push({x:("مكالمة مساعد مع "+o.name+" · "+lab+(sum?": "+sum:"")).slice(0,600),d:Date.now()});set(K.notes,JSON.stringify(n.slice(-300)));renderData();
     sendText((isEn()?"(Call result) Your call to "+o.name+" has ended. Outcome: "+(r.outcome||"ended")+". Summary: "+(sum||"none")+". Transcript:\n"+tr.slice(0,2500)+"\nTell me the result briefly. If something was booked or scheduled, ask whether to add it to my calendar.":"(نتيجة المكالمة) مكالمتك مع "+o.name+" انتهت. النتيجة: "+lab+". الملخص: "+(sum||"ما فيه")+". نص المكالمة:\n"+tr.slice(0,2500)+"\nقولي لي النتيجة باختصار. وإذا انحجز أو تحدد موعد، اسأليني أضيفه للتقويم."),"نتيجة المكالمة: "+lab)}
-  function poll(){fetch(base+"/call/"+id,{headers:H,cache:"no-store"}).then(function(r){return r.json()}).then(function(j){tries=0;
+  function poll(){fetchT(base+"/call/"+id,{headers:H,cache:"no-store"}).then(function(r){return r.json()}).then(function(j){tries=0;
       if(j.status==="done"||j.status==="failed")return done(j);
       var tr=j.transcript||[],tail=tr.length?tr[tr.length-1]:null,key=j.status+"|"+tr.length;
       if(key!==last){last=key;card(j.status==="talking"?"المكالمة جارية":j.status==="ringing"?"يرن…":"جارٍ الاتصال",j.status==="talking"?(tail?(tail.who==="her"?"مساعد: ":o.name+": ")+tail.text.slice(0,220):"تم الرد."):o.to+"\n"+o.brief.slice(0,200),true,j.status==="talking")}
       setTimeout(poll,2500)},function(){if(++tries>24){acBusy=false;showAction({type:"acall",key:"acall",icon:"warn",tone:"info",tagTone:"ask",title:"انقطع الاتصال بالخادم",tag:"تعذّر",blocks:[{t:"text",x:"المكالمة قد تكون مستمرة. افتح الإعدادات وافحص الخادم."}]});return}setTimeout(poll,2500)})}
   card("تجهيز الخط","أول مكالمة بعد توقف قد تأخذ دقيقة.",false);
-  fetch(base+"/call",{method:"POST",headers:H,body:JSON.stringify({to:o.to,name:o.name,brief:o.brief,lang:isEn()?"en":"ar",voice:voiceName(),now:nowText(),dialect:diaC()})})
+  fetchT(base+"/call",{method:"POST",headers:H,body:JSON.stringify({to:o.to,name:o.name,brief:o.brief,lang:isEn()?"en":"ar",voice:voiceName(),now:nowText(),dialect:diaC()})})
     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){if(!x.ok||!x.j.id)return fail(x.j);id=x.j.id;poll()},function(){fail({error:"unreachable"})})}
 TOOLS.assistant_call=function(a,cb){a=a||{};var name=String(a.name||"").trim().slice(0,80),brief=String(a.brief||"").trim().slice(0,1500),num=a.number;
   if(!acOn())return cb({error:"not_set_up",tell_user:"Assistant calls are not set up yet (Settings, Assistant calls). Offer to prepare a normal call with show_action instead."});
@@ -1361,7 +1386,7 @@ TOOLS.confirm_call=function(a,cb){var q=acPend;if(!q||Date.now()-q.t>180000){acP
 function acShow(){if(!$("#csIn"))return;$("#csIn").value=get(K.cs);$("#ckIn").value=get(K.ck);$("#csState").textContent=acOn()?"محفوظ":"غير مفعّل"}
 $("#csBtn").onclick=function(){var u=$("#csIn").value.trim().replace(/\/+$/,""),k=$("#ckIn").value;if(!/^https:\/\//.test(u)){toast("الرابط يجب أن يبدأ بـ https://");return}if(k.length<12){toast("كلمة السر ١٢ حرفًا أو أكثر");return}
   set(K.cs,u);set(K.ck,k);$("#csState").textContent="جارٍ الفحص… قد يأخذ دقيقة";
-  fetch(u+"/me",{headers:{"Authorization":"Bearer "+k},cache:"no-store"}).then(function(r){return r.json().then(function(j){return {st:r.status,j:j}})}).then(function(x){
+  fetchT(u+"/me",{headers:{"Authorization":"Bearer "+k},cache:"no-store"}).then(function(r){return r.json().then(function(j){return {st:r.status,j:j}})}).then(function(x){
     $("#csState").textContent=x.st===401?"كلمة السر غير صحيحة":x.j.ready?"جاهز · "+(x.j.from||""):"ناقص: "+(x.j.missing||[]).join(", ");if(x.j.ready){toast("مكالمات المساعد جاهزة.");if(live){stop();setTimeout(start,500)}}},function(){$("#csState").textContent="تعذّر الوصول إلى الخادم"})};
 acShow();
 /* ---------- visual answers: generic card, photo, route, flight; accent ---------- */
@@ -1386,7 +1411,7 @@ TOOLS.show_card=function(a,cb){a=a||{};var title=cS(a.title,80);if(!title)return
   if(link){d.go=link.url;d.goText=cS(link.label,24)||"افتح";if(tone==="info")d.tone="open"}
   if(items.length>3){d.info=false;d.second={t:"المزيد · "+items.length,fn:function(){openSheet({icon:d.icon,tone:d.tone,title:title,tag:d.tag,blocks:blocks.filter(function(b){return b.t!=="list"&&b.t!=="chips"}).concat([{t:"list",items:items}]),go:d.go,goText:d.goText})}}}
   showAction(d);cb({shown:true,note:"The card is on screen. Say the gist in a sentence or two; do not read it field by field."+(ch.length?" He can say his choice or tap it.":"")})};
-function wikiImages(q,lang,cb){fetch("https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch="+encodeURIComponent(q)+"&gsrlimit=8&prop=pageimages%7Cinfo&piprop=thumbnail&pithumbsize=900&inprop=url")
+function wikiImages(q,lang,cb){fetchT("https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch="+encodeURIComponent(q)+"&gsrlimit=8&prop=pageimages%7Cinfo&piprop=thumbnail&pithumbsize=900&inprop=url")
   .then(function(r){return r.json()}).then(function(j){var pg=j&&j.query&&j.query.pages?Object.keys(j.query.pages).map(function(k){return j.query.pages[k]}):[];pg.sort(function(x,y){return (x.index||0)-(y.index||0)});
     cb(pg.filter(function(x){return x.thumbnail&&/^https:\/\//.test(x.thumbnail.source||"")}).slice(0,4).map(function(x){return {src:x.thumbnail.source,title:cS(x.title,80),url:/^https:\/\//.test(x.fullurl||"")?x.fullurl:""}}))},function(){cb([])})}
 TOOLS.show_photo=function(a,cb){a=a||{};var q=cS(a.query,80),qe=cS(a.query_en,80)||q,cap=cS(a.caption,220),title=cS(a.title,60)||q;if(!q)return cb({error:"query is required"});
@@ -1396,7 +1421,7 @@ TOOLS.show_photo=function(a,cb){a=a||{};var q=cS(a.query,80),qe=cS(a.query_en,80
       if(cap)blocks.push({t:"text",x:cap});
       showAction({type:"card",key:key,icon:"photo",tone:"open",title:title,tag:tag,blocks:blocks,go:im.url,goText:im.url?"افتح المصدر":"",second:imgs.length>1?{t:"صورة ثانية",fn:function(){i=(i+1)%imgs.length;draw()}}:null})};
     draw();cb({shown:true,photos:imgs.map(function(x){return x.title}),source:"Wikipedia",note:"A photo card is on screen. Describe it in a sentence; he can tap it to enlarge."})};
-  var l1=isEn()?"en":"ar",l2=isEn()?"ar":"en";wikiImages(isEn()?qe:q,l1,function(r){if(r.length)return done(r);wikiImages(isEn()?q:qe,l2,done)});setTimeout(function(){done([])},12000)};
+  var l1=isEn()?"en":"ar",l2=isEn()?"ar":"en";wikiImages(isEn()?qe:q,l1,function(r){if(r.length)return done(r);wikiImages(isEn()?q:qe,l2,done)});setTimeout(function(){done([])},7000)};
 var MAN={left:"يسارًا",right:"يمينًا","slight left":"يسارًا قليلًا","slight right":"يمينًا قليلًا","sharp left":"يسارًا بحدّة","sharp right":"يمينًا بحدّة",straight:"مباشرة",uturn:"واستدر"};
 function kmText(m){return m>=1000?fmt(Math.round(m/100)/10)+" كم":Math.max(10,Math.round(m/10)*10)+" م"}
 function routeCard(dest,cb){var key="route|"+dest,gm="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),fin=false,
@@ -1404,9 +1429,9 @@ function routeCard(dest,cb){var key="route|"+dest,gm="https://www.google.com/map
   var plain=function(why,note){if(fin)return;fin=true;showAction(Object.assign({},base,{tag:why,blocks:[{t:"text",x:"اضغط «ابدأ في الخرائط» وتفتح لك الاتجاهات."}]}));cb({shown:true,map_drawn:false,note:note})};
   showAction(Object.assign({},base,{tag:"أرسم الطريق…",skel:true,keep:true}));
   getLoc(function(){var o=locObj();if(!o)return plain("الموقع غير مسموح","His location is not allowed, so no map was drawn. The card opens Maps.");
-    fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language="+(isEn()?"en":"ar")+"&viewbox="+(o.lon-2).toFixed(2)+","+(o.lat+2).toFixed(2)+","+(o.lon+2).toFixed(2)+","+(o.lat-2).toFixed(2)+"&q="+encodeURIComponent(dest))
+    fetchT("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language="+(isEn()?"en":"ar")+"&viewbox="+(o.lon-2).toFixed(2)+","+(o.lat+2).toFixed(2)+","+(o.lon+2).toFixed(2)+","+(o.lat-2).toFixed(2)+"&q="+encodeURIComponent(dest))
       .then(function(r){return r.json()}).then(function(j){if(!j||!j.length)throw 0;var d=j[0];
-        return fetch("https://router.project-osrm.org/route/v1/driving/"+o.lon.toFixed(5)+","+o.lat.toFixed(5)+";"+(+d.lon).toFixed(5)+","+(+d.lat).toFixed(5)+"?overview=full&geometries=geojson&steps=true").then(function(r){return r.json()})})
+        return fetchT("https://router.project-osrm.org/route/v1/driving/"+o.lon.toFixed(5)+","+o.lat.toFixed(5)+";"+(+d.lon).toFixed(5)+","+(+d.lat).toFixed(5)+"?overview=full&geometries=geojson&steps=true").then(function(r){return r.json()})})
       .then(function(j){if(fin)return;if(!j||j.code!=="Ok"||!j.routes||!j.routes[0]||!j.routes[0].geometry)throw 0;fin=true;
         var rt=j.routes[0],co=rt.geometry.coordinates,mins=Math.max(1,Math.round(rt.duration/60)),st=((rt.legs||[])[0]||{}).steps||[],via="",vd=0,steps=[],arr=new Date(Date.now()+rt.duration*1000),
           at=t12(arr.getHours()*60+arr.getMinutes()),dur=mins>=60?Math.floor(mins/60)+" س "+(mins%60)+" د":mins+" دقيقة";
@@ -1417,7 +1442,7 @@ function routeCard(dest,cb){var key="route|"+dest,gm="https://www.google.com/map
         showAction(Object.assign({},base,{tag:"من موقعك · الآن",blocks:[{t:"map",coords:co,badge:dur,tap:sheet},{t:"kv",rows:rows}],second:steps.length?{t:"الخطوات",fn:sheet}:null}));
         cb({shown:true,map_drawn:true,distance_km:+(rt.distance/1000).toFixed(1),minutes:mins,via:via,arrival:at,note:"Estimate without live traffic. Say time and distance briefly."})})
       .catch(function(){plain("تعذّر رسم الخريطة","The map could not be drawn. The card opens Maps for directions.")})});
-  setTimeout(function(){plain("تعذّر رسم الخريطة","The map could not be drawn in time. The card opens Maps.")},16000)}
+  setTimeout(function(){plain("تعذّر رسم الخريطة","The map could not be drawn in time. The card opens Maps.")},9000)}
 TOOLS.show_route=function(a,cb){var dest=cS(a&&a.destination,140);if(!dest)return cb({error:"destination is required"});routeCard(dest,cb)};
 TOOLS.show_flight=function(a,cb){a=a||{};var fr=cS(a.from_code,4).toUpperCase(),to=cS(a.to_code,4).toUpperCase();if(!fr||!to)return cb({error:"from_code and to_code are required"});
   var f=[],add=function(k,v){v=cS(v,30);if(v)f.push([k,v])};add("التاريخ",a.date);add("الصعود",a.boarding);add("البوابة",a.gate);add("المقعد",a.seat);add("الصالة",a.terminal);add("الحجز",a.booking_ref);
@@ -1497,7 +1522,8 @@ var P1={type:"STRING"},FOPT={type:"OBJECT",properties:{depart_time:P1,arrive_tim
  {name:"doc_update",description:"Correct details the app read wrongly from a document, or add missing ones. Without id it changes the one just uploaded. Dates are YYYY-MM-DD, times are 24-hour HH:MM.",parameters:{type:"OBJECT",properties:{id:P1,kind:{type:"STRING",enum:["boarding","hotel","event","other"]},title:P1,name:P1,code:P1,date:P1,time:P1,end_date:P1,place:P1,seat:P1,airline:P1,flight:P1,from_code:P1,from_city:P1,to_code:P1,to_city:P1,arrive_time:P1,boarding_time:P1,gate:P1,terminal:P1,notes:P1}}},
  {name:"doc_delete",description:"Ask him to confirm deleting a saved document; a confirm card is shown.",parameters:{type:"OBJECT",properties:{id:P1},required:["id"]}},
  {name:"web_search",description:"Search the live web through Google and get facts back with their sources. Use it for anything that can change or that you are not certain of: news, prices, stocks, currencies, flights, hotels, opening hours, places, sports, people, events, rules. Call it BEFORE you answer; never answer such things from memory. One focused question per call. For a comparison, several stocks, or a trip, make several calls in the same turn; they run together.",parameters:{type:"OBJECT",properties:{query:{type:"STRING",description:"One complete question in the language to search in, with the place and the date when they matter"},kind:{type:"STRING",enum:["fact","news","price","flights","hotels","place"]},depth:{type:"STRING",enum:["quick","deep"],description:"quick for one fact or price; deep for options to compare"},details:{type:"STRING",description:"Extra limits such as budget, number of travellers, preferred airline or area"}},required:["query"]}},
- {name:"show_sources",description:"Show the sources of your last web search as a card he can tap to open. Use it when he asks where the information is from."}];
+ {name:"show_sources",description:"Show the sources of your last web search as a card he can tap to open. Use it when he asks where the information is from."},
+ {name:"confirm_delete",description:"Finish or cancel a delete after the confirm card is on screen and he has answered by voice. confirm true only after he clearly said yes; confirm false if he said no.",parameters:{type:"OBJECT",properties:{confirm:{type:"BOOLEAN"}},required:["confirm"]}}];
 
 /* ================= documents: boarding pass, hotel booking, tickets ================= */
 K.docs="musaed.docs";KIND.flight=["رحلة","#5E5CE6"];KIND.stay=["إقامة","#FF9F0A"];KIND.event=["فعالية","#30D158"];
@@ -1530,8 +1556,8 @@ function docPrompt(){return "You read a travel or booking document for its owner
   "title: a short Arabic title, for example «رحلة جدة» or «فندق الواحة». Write city names in Arabic; keep airport codes, flight numbers, seats and codes exactly as printed. "+
   "If there are several passengers or pages, use the first passenger. If the year is not printed, choose the first such date on or after today. Today is "+locISO(new Date()).slice(0,10)+"."}
 function gemCall(m,key,body){var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort()},45000);
-  return fetch(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){clearTimeout(tm);return r.json().then(function(j){return {s:r.status,j:j}},function(){return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error("net")})}
-function gemModels(key){return fetch(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){return cArr(j&&j.models).filter(function(m){return cArr(m.supportedGenerationMethods).indexOf("generateContent")>=0&&/flash/.test(m.name)&&!/live|tts|image|audio|embed|lite|banana|native/.test(m.name)}).map(function(m){return m.name.replace("models/","")}).sort().reverse()},function(){return []})}
+  return fetchT(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){clearTimeout(tm);return r.json().then(function(j){return {s:r.status,j:j}},function(){return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error("net")})}
+function gemModels(key){return fetchT(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){return cArr(j&&j.models).filter(function(m){return cArr(m.supportedGenerationMethods).indexOf("generateContent")>=0&&/flash/.test(m.name)&&!/live|tts|image|audio|embed|lite|banana|native/.test(m.name)}).map(function(m){return m.name.replace("models/","")}).sort().reverse()},function(){return []})}
 function docRead(parts){var key=get(K.key).trim();if(!key)return Promise.reject(new Error("nokey"));
   var body=function(js){var b={contents:[{role:"user",parts:[{text:docPrompt()}].concat(parts)}]};if(js)b.generationConfig={responseMimeType:"application/json"};return b},
     run=function(m){return gemCall(m,key,body(true)).then(function(r){return r.s===400?gemCall(m,key,body(false)):r})},first=docModel||"gemini-flash-latest";
@@ -1561,8 +1587,8 @@ function docBlocks(d,src){var f=d.f,b=[],kv=[],add=function(k,v){if(v)kv.push([k
   if(d.unread)b.push({t:"small",x:d.unread==="nokey"?"الصورة جاهزة. لقراءة التفاصيل أدخل مفتاح Google AI في الإعدادات.":d.unread==="quota"?"الصورة جاهزة. وصلت حد الاستخدام، فما انقرأت التفاصيل الآن.":"الصورة جاهزة، وما قدرت أقرأ التفاصيل. قل لمساعد البيانات وهي تضيفها."});
   return b}
 function docCard(d,o){o=o||{};var k=DK[d.kind]||DK.other;return dbGet(d.id+"/0").then(function(src){
-  var a={type:"card",key:"doc|"+d.id,icon:k[1],tone:d.pend?"ask":"open",tagTone:d.pend||o.auto?"ask":"",title:d.title,tag:k[0]+" · "+(d.pend?"راجع ثم احفظ":o.auto||"على جوالك فقط"),keep:true,blocks:docBlocks(d,src)};
-  if(d.pend){a.go="#";a.goText="احفظي";a.fn=function(){var x=docKeep(d.id);if(x){toast("حُفظت: "+x.title);docCard(x)}};a.second={t:"لا تحفظي",fn:function(){docDrop(d.id);closeAction();toast("لم تُحفظ")}}}
+  var a={urgent:!!o.auto,type:"card",key:"doc|"+d.id,icon:k[1],tone:d.pend?"ask":"open",tagTone:d.pend||o.auto?"ask":"",title:d.title,tag:k[0]+" · "+(d.pend?"راجع ثم احفظ":o.auto||"على جوالك فقط"),keep:true,blocks:docBlocks(d,src)};
+  if(d.pend){a.go="#";a.goText="احفظي";a.fn=function(){var x=docKeep(d.id);if(x){docSavedAt={id:x.id,t:Date.now()};toast("حُفظت: "+x.title);docCard(x);tell("(ضغطت «احفظي» على البطاقة وانحفظت الوثيقة: "+x.title+(x.ev?"، وانضافت للتقويم":"")+") أكّدي لي بكلمتين.","(I tapped Save on the card; the document is saved: "+x.title+(x.ev?", and added to the calendar":"")+".) Confirm in a few words.","حفظ: "+x.title)}};a.second={t:"لا تحفظي",fn:function(){docDrop(d.id);closeAction();toast("لم تُحفظ");tell("(ضغطت «لا تحفظي»؛ الوثيقة ما انحفظت) قولي تمام بكلمة.","(I tapped Do not save; the document was not kept.) Acknowledge in a word.","لا تحفظي")}}}
   else{a.go="#";a.goText=src?"عرض بملء الشاشة":"افتح الملف";a.fn=function(){docOpen(d.id,0,true)};if(docGet().filter(function(x){return !x.pend}).length>1)a.second={t:"كل الوثائق",fn:docListCard}}
   showAction(a)})}
 function docListCard(){var l=docSorted(docGet().filter(function(x){return !x.pend}));
@@ -1610,7 +1636,7 @@ function docIngest(file){if(docBusy)return;var pdf=file.type==="application/pdf"
 function docWake(on){try{if(on&&navigator.wakeLock)navigator.wakeLock.request("screen").then(function(l){wakeL=l},function(){});else if(!on&&wakeL){wakeL.release();wakeL=null}}catch(e){}}
 function docOpen(id,i,back){var d=docFind(id);if(!d)return;i=i||0;var v=$("#docView"),show=function(){dvS={id:id,i:i,n:d.n||0,back:back||(dvS&&dvS.id===id&&dvS.back)};$("#dvTitle").textContent=d.title;$("#dvPg").textContent=d.n>1?(i+1)+" / "+d.n:"";$("#dvPrev").hidden=$("#dvNext").hidden=!(d.n>1);v.classList.remove("zoom");v.classList.add("on");docWake(true)};
   if(d.n)return dbGet(id+"/"+i).then(function(src){if(!src)return toast("الصورة غير موجودة على هذا الجهاز");$("#dvPdf").hidden=true;$("#dvImg").hidden=false;$("#dvImg").src=src;show()});
-  return dbGet(id+"/pdf").then(function(u){if(!u)return toast("الملف غير موجود على هذا الجهاز");return fetch(u).then(function(r){return r.blob()}).then(function(b){$("#dvImg").hidden=true;$("#dvPdf").hidden=false;$("#dvPdf").src=URL.createObjectURL(b);show()})})}
+  return dbGet(id+"/pdf").then(function(u){if(!u)return toast("الملف غير موجود على هذا الجهاز");return fetchT(u).then(function(r){return r.blob()}).then(function(b){$("#dvImg").hidden=true;$("#dvPdf").hidden=false;$("#dvPdf").src=URL.createObjectURL(b);show()})})}
 function docShut(){var s=dvS,v=$("#docView");v.classList.remove("on","zoom");$("#dvImg").removeAttribute("src");if(!$("#dvPdf").hidden){try{URL.revokeObjectURL($("#dvPdf").src)}catch(e){}$("#dvPdf").removeAttribute("src")}dvS=null;docWake(false);if(s&&s.back){var d=docFind(s.id);if(d)docCard(d)}}
 $("#dvClose").onclick=docShut;$("#dvImg").onclick=function(){$("#docView").classList.toggle("zoom")};
 $("#dvPrev").onclick=function(){if(dvS&&dvS.n>1)docOpen(dvS.id,(dvS.i-1+dvS.n)%dvS.n)};$("#dvNext").onclick=function(){if(dvS&&dvS.n>1)docOpen(dvS.id,(dvS.i+1)%dvS.n)};
@@ -1632,7 +1658,7 @@ function docRender(){var ul=$("#dcList");if(!ul)return;var l=docSorted(docGet().
   [].forEach.call(ul.children,function(li,ix){var t=li.querySelector(".tt");if(t){t.style.cursor="pointer";t.onclick=function(){docOpen(l[ix].id,0,false)}}})}
 $("#dcAdd").onclick=function(){docPick("#docAny")};
 TOOLS.doc_add=function(a,cb){docAddCard();cb({shown:true,note:"A card is on screen with three choices: camera, photo, PDF file. He must tap one; you cannot open the camera or the files yourself. Tell him in one short sentence to pick one. Passports, identity cards and bank cards are not kept."})};
-TOOLS.doc_confirm=function(a,cb){a=a||{};var p=docGet().filter(function(x){return x.pend}).pop();if(!p)return cb({error:"No uploaded document is waiting."});
+TOOLS.doc_confirm=function(a,cb){a=a||{};var p=docGet().filter(function(x){return x.pend}).pop();if(!p){var ls=docSavedAt&&Date.now()-docSavedAt.t<180000?docFind(docSavedAt.id):null;if(ls&&a.save!==false)return cb({saved:true,already_saved_by_his_tap:true,document:docOut(ls)});return cb({error:"No uploaded document is waiting."})}
   if(a.save===false){if(curCard&&curCard._key==="doc|"+p.id)closeAction();docDrop(p.id);return cb({discarded:true})}
   var d=docKeep(p.id);docCard(d);cb({saved:true,document:docOut(d),calendar:d.ev?"added to his calendar":"not added (no usable date and time on it)",stored:"on this phone only",note:"Say it is saved in one short sentence."})};
 TOOLS.doc_list=function(a,cb){var l=docSorted(docGet().filter(function(x){return !x.pend}));docListCard();cb({documents:l.map(docOut),stored:"on this phone only",note:"The list is on screen. Do not read codes aloud."})};
@@ -1648,8 +1674,8 @@ TOOLS.doc_update=function(a,cb){a=a||{};var all=docGet(),id=cS(a.id,40),d=id?all
       if(f.x.gid){var t=evTimes(new Date(f.x.s),f.x.mins);gapiQ("PATCH",CALU+"/"+encodeURIComponent(f.x.gid),{start:t.start,end:t.end,summary:f.x.title},function(){})}}}
   docSet(all);docRender();docCard(d);cb({ok:true,document:docOut(d)})};
 TOOLS.doc_delete=function(a,cb){var d=docFind(cS((a||{}).id,40));if(!d)return cb({error:"document not found; get the id from doc_list"});
-  showAction({type:"confirm",key:"docdel|"+d.id,title:"حذف الوثيقة؟",tag:"لا يمكن استرجاعها",tagTone:"danger",closeText:"تراجع",blocks:[{t:"kv",rows:[["الوثيقة",d.title],["النوع",(DK[d.kind]||DK.other)[0]]]}],go:"#",goText:"احذف",fn:function(){docDrop(d.id);toast("حُذفت: "+d.title)}});
-  cb({awaiting_user_confirmation:true,document:docOut(d),note:"A confirm card is on screen. It is deleted only if he taps Delete."})};
+  delAsk("docdel|"+d.id,"حذف الوثيقة؟",d.title,[["الوثيقة",d.title],["النوع",(DK[d.kind]||DK.other)[0]]],function(){docDrop(d.id);toast("حُذفت: "+d.title)});
+  cb({awaiting_user_confirmation:true,document:docOut(d),note:"A confirm card is on screen. Ask him. If he says yes call confirm_delete with confirm true; if he says no, with confirm false. He can also tap Delete."})};
 
 /* ================= web search: her own command, works on any voice model ================= */
 K.gm="musaed.gm";
@@ -1662,7 +1688,7 @@ var WS_TTL={price:60,news:300,flights:600,hotels:600,place:900,fact:900},wsCache
     place:"Focus: the address, today's opening hours, the phone number and the rating."};
 function gemPick(key){var c=null;try{c=JSON.parse(get(K.gm)||"null")}catch(e){}
   if(c&&c.smart&&c.fast&&Date.now()-(+c.t||0)<864e5)return Promise.resolve(c);
-  return gmP||(gmP=fetch(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){
+  return gmP||(gmP=fetchT(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){
     var ok=cArr(j&&j.models).filter(function(m){return cArr(m.supportedGenerationMethods).indexOf("generateContent")>=0&&/flash/.test(m.name)&&!/live|tts|image|audio|embed|banana|native|exp|computer|robot/.test(m.name)}).map(function(m){return m.name.replace("models/","")}),
       rank=function(n){var v=/(\d+(?:\.\d+)?)/.exec(n);return (/latest/.test(n)?1000:0)+(v?parseFloat(v[1]):0)-(/preview/.test(n)?.05:0)},
       top=function(l){return l.sort(function(a,b){return rank(b)-rank(a)})[0]},
@@ -1670,7 +1696,7 @@ function gemPick(key){var c=null;try{c=JSON.parse(get(K.gm)||"null")}catch(e){}
       o={t:ok.length?Date.now():0,smart:full||"gemini-flash-latest",fast:lite||full||"gemini-flash-latest"};
     if(ok.length)set(K.gm,JSON.stringify(o));gmP=null;return o},function(){gmP=null;return {t:0,smart:"gemini-flash-latest",fast:"gemini-flash-latest"}}))}
 function wsFetch(m,key,body,ms){var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort()},ms);
-  return fetch(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){return r.json().then(function(j){clearTimeout(tm);return {s:r.status,j:j}},function(){clearTimeout(tm);return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error(e&&e.name==="AbortError"?"timeout":"net")})}
+  return fetchT(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){return r.json().then(function(j){clearTimeout(tm);return {s:r.status,j:j}},function(){clearTimeout(tm);return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error(e&&e.name==="AbortError"?"timeout":"net")})}
 function wsSys(kind,en){var o=locObj(),d=new Date(),where=o&&(o.city||o.region)?[o.city,o.region].filter(Boolean).join(", "):"Saudi Arabia";
   return "You are the web research engine behind a voice assistant. The user is in "+where+". Local date and time now: "+d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+", "+p2(d.getHours())+":"+p2(d.getMinutes())+".\n"+
     "Search Google, then answer with facts only.\n"+
@@ -1712,7 +1738,7 @@ $("#stage").onclick=function(){
   if($("#card").classList.contains("open")){closeCard();return}
   if(!live){start();return}
   if(ready&&speaking()){flush();dropTurn=true}};
-$("#actClose").onclick=closeAction;
+$("#actClose").onclick=function(){var c=curCard;closeAction();if(c&&typeof c.closeFn==="function"){try{c.closeFn()}catch(e){}}};
 $("#actSecond").onclick=function(){var f=secFn;if(f)f()};
 $("#sheetClose").onclick=$("#sheetGrab").onclick=closeSheet;
 $("#sheetGo").addEventListener("click",function(e){if(sheetFn){e.preventDefault();var f=sheetFn;closeSheet();f()}});
@@ -1732,7 +1758,7 @@ function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
 function showDiag(){var e=$("#diag");if(!e)return;var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
-  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
+  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nاستمرار الجلسة: "+(DG.rs||0)+" انقطاع · "+(DG.rsOk||0)+" استئناف"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#lmBtn").onclick=function(){if(modelPick()===MODEL_NEW)set(K.lm,JSON.stringify({m:"old",why:"user",t:Date.now()}));else set(K.lm,"");showDiag();toast(modelPick()===MODEL_NEW?"النموذج الصوتي: الأحدث":"النموذج الصوتي: السابق");if(live){stop();start()}};
@@ -1749,11 +1775,11 @@ $("#clearBtn").onclick=function(){log=[];set(K.log,"[]");renderLog()};
   grip.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();card.classList.contains("open")?closeCard():openCard()}});
   grip.addEventListener("pointerup",up);grip.addEventListener("pointercancel",up)})();
 document.addEventListener("visibilitychange",function(){
-  if(document.hidden){if(live)stop()}
-  else if(get(K.key)&&!live&&!userEnded&&!$("#card").classList.contains("open"))start()});
+  if(document.hidden){if(live){hidAt=Date.now();stop()}}
+  else if(get(K.key)&&!live&&!userEnded&&!$("#card").classList.contains("open")){resumeNext=hidAt>0&&Date.now()-hidAt<900000;start()}});
 
 renderLog();renderPf();renderDev();showG();setMode("idle");
-if(!location.hash&&location.protocol!=="file:")fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){var k="musaed.rl";
+if(!location.hash&&location.protocol!=="file:")fetchT("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){var k="musaed.rl";
   if(j&&j.v&&j.v!==BUILD){var last="";try{last=sessionStorage.getItem(k)||""}catch(e){}if(last!==j.v){try{sessionStorage.setItem(k,j.v)}catch(e){}location.replace(location.pathname+"?v="+encodeURIComponent(j.v))}}}).catch(function(){});if(gJust){toast("تم ربط حساب Google");gapi("GET","https://people.googleapis.com/v1/people:searchContacts?pageSize=1&readMask=names&query=",null,function(){})}
 if(!get(K.key)){$("#state").textContent="أدخل مفتاح التفعيل للبدء";openCard("set")}
 else start();
