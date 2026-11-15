@@ -17,9 +17,9 @@ async def go():
         for i in range(4): await audio()
         await msg({"serverContent":{"outputTranscription":{"text":"الرياض مدينة قديمة"}}})
         a=await st();print(" speaking:",a["playing"],"chunks")
-        await msg({"serverContent":{"inputTranscription":{"text":"اسكتي"}}})
-        a=await st();print(" after «اسكتي»: playing",a["playing"],"| hushed",a["hushed"],"| note sent:",'قلت لك تسكتين' in a["last"])
-        if a["playing"] or not a["hushed"] or 'قلت لك تسكتين' not in a["last"]: F("HIGH","hush","she did not stop on «اسكتي»")
+        await msg({"serverContent":{"inputTranscription":{"text":"اسكتي"}}});await pg.wait_for_timeout(900)
+        a=await st();sent_note=await pg.evaluate("__sent.some(x=>x.indexOf('قلت لك تسكتين')>-1)");print(" after «اسكتي»: playing",a["playing"],"| hushed",a["hushed"],"| note sent:",sent_note)
+        if a["playing"] or not a["hushed"] or not sent_note: F("HIGH","hush","she did not stop on «اسكتي»")
         for i in range(3): await audio()
         await msg({"serverContent":{"outputTranscription":{"text":"تمام، سكتت"}}})
         a=await st();print(" her reply while hushed: playing",a["playing"],"| bubbles",a["bubbles"])
@@ -29,6 +29,20 @@ async def go():
         await audio();a=await st();print(" next question: hushed",a["hushed"],"| playing",a["playing"])
         if a["hushed"] or not a["playing"]: F("HIGH","hush","she stays silent after he asks something new")
         await msg({"serverContent":{"turnComplete":True}});await pg.wait_for_timeout(500)
+        # 1b sentences that START with a stop word, arriving in pieces
+        for parts in (["خلاص"," احفظيه"],["بس"," أبي أسألك عن الموعد"]):
+            for i in range(3): await audio()
+            await msg({"serverContent":{"inputTranscription":{"text":parts[0]}}});await pg.wait_for_timeout(250)
+            await msg({"serverContent":{"inputTranscription":{"text":parts[1]}}});await pg.wait_for_timeout(800)
+            a=await st();print(" «"+"".join(parts)+"» in pieces: hushed",a["hushed"])
+            if a["hushed"]: F("HIGH","hush","a sentence starting with "+parts[0]+" silenced her")
+            await msg({"serverContent":{"turnComplete":True}})
+        # 1c app notes wait for her to finish
+        for i in range(6): await audio()
+        n0=len(await pg.evaluate("__sent"));await call("driving_mode",{"on":True},100)
+        a=await st();print(" app note while she speaks: playing still",a["playing"]>0)
+        await call("driving_mode",{"on":False},100)
+        await msg({"serverContent":{"turnComplete":True}});await pg.wait_for_timeout(2500)
         # 2 a normal sentence with بس
         await msg({"serverContent":{"inputTranscription":{"text":"ابي قهوة بس"}}});a=await st();print(" «ابي قهوة بس» hushes:",a["hushed"])
         if a["hushed"]: F("HIGH","hush","a normal sentence ending in بس silenced her")
