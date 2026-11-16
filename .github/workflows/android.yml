@@ -41,12 +41,12 @@ jobs:
 
       - name: Signing key
         env:
-          PASS: ${{ secrets.MUSAED_KS_PASS }}
+          PASS: ${{ secrets.JARVES_KEY }}
         run: |
           ENC=signing/musaed.jks.enc
           if [ -z "$PASS" ]; then
             echo "SIGNED=temporary" >> "$GITHUB_ENV"
-            echo "::warning::MUSAED_KS_PASS is not set; this build cannot update an installed copy."
+            echo "::warning::JARVES_KEY is not set; this build cannot update an installed copy."
             exit 0
           fi
           mkdir -p signing
@@ -69,7 +69,7 @@ jobs:
       - name: Build
         env:
           MUSAED_BUILD: ${{ github.run_number }}
-          MUSAED_KS_PASS: ${{ secrets.MUSAED_KS_PASS }}
+          MUSAED_KS_PASS: ${{ secrets.JARVES_KEY }}
         working-directory: android-app/android
         run: |
           chmod +x gradlew
