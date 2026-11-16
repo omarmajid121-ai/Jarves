@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">مساعد</string>
+    <string name="title_activity_main">مساعد</string>
+    <string name="package_name">sa.musaed.app</string>
+    <string name="custom_url_scheme">sa.musaed.app</string>
+</resources>

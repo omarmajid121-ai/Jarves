@@ -1,0 +1,77 @@
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android-app/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Sync web shell and plugins
+        run: npx cap sync android
+
+      - name: Signing key
+        env:
+          KS_B64: ${{ secrets.MUSAED_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/musaed.jks"
+            echo "MUSAED_KEYSTORE=$RUNNER_TEMP/musaed.jks" >> "$GITHUB_ENV"
+            echo "SIGNED=fixed" >> "$GITHUB_ENV"
+          else
+            echo "SIGNED=temporary" >> "$GITHUB_ENV"
+            echo "::warning::No fixed signing key; this build cannot update an installed copy."
+          fi
+
+      - name: Build
+        env:
+          MUSAED_BUILD: ${{ github.run_number }}
+          MUSAED_KS_PASS: ${{ secrets.MUSAED_KS_PASS }}
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/musaed.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: musaed-apk
+          path: ${{ runner.temp }}/musaed.apk
+
+      - name: Publish download
+        if: env.SIGNED == 'fixed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-latest >/dev/null 2>&1 || gh release create android-latest --title "مساعد · تطبيق أندرويد" --notes "أحدث نسخة من تطبيق مساعد لأندرويد." --latest=false
+          gh release upload android-latest "$RUNNER_TEMP/musaed.apk" --clobber
+          gh release edit android-latest --notes "أحدث نسخة من تطبيق مساعد لأندرويد · بناء ${{ github.run_number }}"

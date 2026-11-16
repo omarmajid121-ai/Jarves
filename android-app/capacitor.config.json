@@ -1,0 +1,22 @@
+{
+  "appId": "sa.musaed.app",
+  "appName": "مساعد",
+  "webDir": "www",
+  "server": {
+    "url": "https://omarmajid121-ai.github.io/Jarves/",
+    "allowNavigation": [
+      "omarmajid121-ai.github.io"
+    ],
+    "errorPath": "index.html"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_musaed",
+      "iconColor": "#5FE4FF"
+    }
+  }
+}
