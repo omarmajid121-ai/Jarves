@@ -1,0 +1,4 @@
+Voice ID files used by Musaed, running on the phone only:
+- ort.wasm.bundle.min.mjs, ort-wasm-simd-threaded.* : ONNX Runtime Web 1.31.1, (c) Microsoft Corporation, MIT License.
+- voice.onnx : WeSpeaker ResNet34 speaker-embedding model (VoxCeleb), Apache License 2.0, from the WeSpeaker project
+  (https://github.com/wenet-e2e/wespeaker) via sherpa-onnx; converted to 8-bit weights for size.
