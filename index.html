@@ -618,7 +618,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.12",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.13",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -1866,13 +1866,13 @@ var WS_TTL={price:60,news:300,flights:600,hotels:600,place:900,fact:900},wsCache
     hotels:"Focus: up to six real hotels: name, guest rating, area and distance to the place asked about, price per night with currency, total for the stay, and cancellation terms if shown.",
     place:"Focus: the address, today's opening hours, the phone number and the rating."};
 function gemPick(key){var c=null;try{c=JSON.parse(get(K.gm)||"null")}catch(e){}
-  if(c&&c.smart&&c.fast&&Array.isArray(c.all)&&Date.now()-(+c.t||0)<864e5)return Promise.resolve(c);
+  if(c&&c.v===2&&c.smart&&c.fast&&Array.isArray(c.all)&&Date.now()-(+c.t||0)<864e5)return Promise.resolve(c);
   return gmP||(gmP=fetchT(GAPI+"models?pageSize=200",{headers:{"x-goog-api-key":key}}).then(function(r){return r.json()}).then(function(j){
     var ok=cArr(j&&j.models).filter(function(m){return cArr(m.supportedGenerationMethods).indexOf("generateContent")>=0&&/flash/.test(m.name)&&!/live|tts|image|audio|embed|banana|native|exp|computer|robot/.test(m.name)}).map(function(m){return m.name.replace("models/","")}),
       rank=function(n){var v=/(\d+(?:\.\d+)?)/.exec(n);return (/latest/.test(n)?1000:0)+(v?parseFloat(v[1]):0)-(/preview/.test(n)?.05:0)},
       top=function(l){return l.sort(function(a,b){return rank(b)-rank(a)})[0]},
       full=top(ok.filter(function(n){return !/lite/.test(n)})),lite=top(ok.filter(function(n){return /lite/.test(n)})),
-      o={t:ok.length?Date.now():0,smart:full||"gemini-flash-latest",fast:lite||full||"gemini-flash-latest",all:ok.slice().sort(function(a,b){return rank(b)-rank(a)}).slice(0,7)};
+      real=ok.filter(function(n){return !/latest/.test(n)}),o={v:2,t:ok.length?Date.now():0,smart:full||"gemini-flash-latest",fast:lite||full||"gemini-flash-latest",all:(real.length?real:ok).slice().sort(function(a,b){return rank(b)-rank(a)}).slice(0,14)};
     if(ok.length)set(K.gm,JSON.stringify(o));gmP=null;return o},function(){gmP=null;return {t:0,smart:"gemini-flash-latest",fast:"gemini-flash-latest"}}))}
 function wsFetch(m,key,body,ms){var ac=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ac)ac.abort()},ms);
   return fetchT(GAPI+"models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){return r.json().then(function(j){clearTimeout(tm);return {s:r.status,j:j}},function(){clearTimeout(tm);return {s:r.status,j:null}})},function(e){clearTimeout(tm);throw new Error(e&&e.name==="AbortError"?"timeout":"net")})}
@@ -1955,7 +1955,7 @@ TOOLS.read_page=function(a,cb){readPage(a).then(cb)};
 
 /* ================= memory: full history, running summary, lasting facts ================= */
 K.mem="musaed.mem";K.sum="musaed.sum";K.sums="musaed.sums";K.hd="musaed.hd";K.lt="musaed.lt";
-var hDay="",hBuf=null,hLoad=null,hT=0,sumBusy=false,sumNew=[],gmBlock={},wsRun=0,wsWait=[];
+var hDay="",hBuf=null,hLoad=null,hT=0,sumBusy=false,sumNew=[],gmBlock=(function(){try{var o=JSON.parse(localStorage.getItem("musaed.gmb")||"{}");return o&&typeof o==="object"?o:{}}catch(e){return {}}})(),wsRun=0,wsWait=[];
 function dayKey(d){return locISO(d||new Date()).slice(0,10)}
 function histDays(){try{var a=JSON.parse(get(K.hd)||"[]");return Array.isArray(a)?a.filter(function(x){return /^\d{4}-\d{2}-\d{2}$/.test(x)}):[]}catch(e){return []}}
 function histFlush(){clearTimeout(hT);if(hDay&&hBuf)dbPut("hist/"+hDay,hBuf)}
@@ -2017,13 +2017,15 @@ TOOLS.history_search=function(a,cb){a=a||{};var ws=devNorm(cS(a.query,120)).filt
 /* one place that talks to the text models: picks a model, falls back when one is over its limit */
 function gemErr(r){var e=(r.j&&r.j.error)||{},delay=0,qid="";cArr(e.details).forEach(function(x){if(x&&x.retryDelay)delay=parseFloat(x.retryDelay)||0;cArr(x&&x.violations).forEach(function(v){qid=qid||String(v.quotaId||v.quotaMetric||"")})});
   var msg=String(e.message||"");return {msg:msg.slice(0,170),delay:delay,day:/PerDay|per day|daily/i.test(qid+" "+msg),zero:/limit:\s*0\b/.test(msg)}}
+function gmDayEnd(){var n=new Date(),pt=new Date(n.toLocaleString("en-US",{timeZone:"America/Los_Angeles"})),nx=new Date(pt);nx.setHours(24,0,30,0);return n.getTime()+(nx-pt)}
+function gmBlockSet(m,until){gmBlock[m]=until;try{var o={},k;for(k in gmBlock)if(gmBlock[k]>Date.now())o[k]=gmBlock[k];localStorage.setItem("musaed.gmb",JSON.stringify(o))}catch(e){}}
 function gemAsk(pref,mk,ms){var key=get(K.key).trim(),t0=Date.now(),last=null;
   return gemPick(key).then(function(gm){var order=[pref==="fast"?gm.fast:gm.smart,pref==="fast"?gm.smart:gm.fast].concat(cArr(gm.all)).filter(function(m,i,a){return m&&a.indexOf(m)===i}),i=0,tried=0,
     next=function(){var m=null;while(i<order.length){var c=order[i++];if(!(gmBlock[c]>Date.now())){m=c;break}}
-      if(!m||tried>=4||(tried&&Date.now()-t0>ms-2000))return last||{s:429,j:null,model:"",info:{msg:"every model is over its limit right now",delay:0,day:true,zero:false}};
+      if(!m||(tried&&Date.now()-t0>ms-2000))return last||{s:429,j:null,model:"",info:{msg:"every model is over its limit right now",delay:0,day:true,zero:false}};
       tried++;var left=function(){return Math.max(2500,ms-(Date.now()-t0))};
       return wsFetch(m,key,mk(!wsNoCfg[m]),left()).then(function(r){if(r.s===400&&!wsNoCfg[m]){wsNoCfg[m]=1;return wsFetch(m,key,mk(false),left())}return r}).then(function(r){r.model=m;
-        if(r.s===429){r.info=gemErr(r);gmBlock[m]=Date.now()+(r.info.day||r.info.zero?6*36e5:Math.max(15,r.info.delay||45)*1000);last=r;return next()}
+        if(r.s===429){r.info=gemErr(r);gmBlockSet(m,r.info.day||r.info.zero?gmDayEnd():Date.now()+Math.max(15,r.info.delay||45)*1000);last=r;return next()}
         if(r.s===404||r.s===400){if(r.s===404)set(K.gm,"");last=r;return next()}
         return r})};
     return next()})}
