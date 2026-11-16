@@ -67,7 +67,7 @@ async def go():
         su=[x for x in ss if "setup" in x];tx=[x["realtimeInput"]["text"] for x in ss if "realtimeInput" in x and "text" in x["realtimeInput"]]
         v=su[-1]["setup"]["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] if su else None
         print(" to English:",r.get("switching"),"| new voice",v,"| prompt starts:",su[-1]["setup"]["systemInstruction"]["parts"][0]["text"][:30] if su else None,"| first line:",tx[-1][:60] if tx else None)
-        if not su or not su[-1]["setup"]["systemInstruction"]["parts"][0]["text"].startswith("You are"): F("HIGH","language","switch to English did not happen")
+        if not su or not su[-1]["setup"]["systemInstruction"]["parts"][0]["text"].find("You are Musaed")>-1: F("HIGH","language","switch to English did not happen")
         n0=await pg.evaluate("__sent.length");r=await call("set_language",{"language":"ar"});await pg.wait_for_timeout(1600)
         su=[json.loads(x) for x in await pg.evaluate(f"__sent.slice({n0})") if '"setup"' in x]
         print(" back to Arabic:",su[-1]["setup"]["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] if su else None,"| prompt:",su[-1]["setup"]["systemInstruction"]["parts"][0]["text"][:20] if su else None)

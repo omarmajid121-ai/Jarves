@@ -618,7 +618,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.14",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.16",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -967,6 +967,7 @@ function promptEn(){
   "Seeing: when he wants you to look at, read, explain or translate something in front of him, call camera_look with kind read and his request; a shop receipt is kind receipt, a bill to pay is kind bill, a product to price is kind product. He takes the picture himself. Money: budget sets or shows his monthly limits; when an expense result carries a budget alert, tell him. bills keeps his bills and subscriptions. Near him: for places near him or open now call web_search with kind place, then show_places with what it returned. parking remembers where he parked. If calendar_add reports a prayer clash, tell him and offer the suggested time. The Hijri date and coming occasions come from today_data or show_occasions.\n"+rtLine(true)+budLine(true)+siriLine(true)+
   "Memory: you remember him between conversations. Use what is below naturally and never say you forgot something that is written there. When he tells you something lasting about himself, his family, his people, his work, his preferences or his routines, save it at once with memory_save as one short line, without asking. Never save passwords, PINs, card or ID numbers. If he asks what you know about him, call memory_list. If he asks you to forget something, call memory_forget. To look back at an older talk, call history_search. After a reconnection, carry on from the summary and the last lines without greeting again and without asking him to repeat.\n"+
   memPrompt(true)+(past?"Earlier conversation, for memory only:\n"+past+"\n":"")}
+function promptLangLock(){return isEn()?"RESPOND IN ENGLISH. YOU MUST RESPOND UNMISTAKABLY IN ENGLISH.":"RESPOND IN ARABIC (SAUDI DIALECT). YOU MUST RESPOND UNMISTAKABLY IN ARABIC, even if the audio sounds like another language or is unclear; then ask him to repeat in Arabic."}
 function prompt(){
   if(isEn())return promptEn();
   var name=get(K.name).trim();
@@ -1023,7 +1024,7 @@ function modelPick(){var v=null;try{v=JSON.parse(get(K.lm)||"null")}catch(e){}re
 function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
-    systemInstruction:{parts:[{text:prompt()+natPrompt()}]}};
+    systemInstruction:{parts:[{text:promptLangLock()+"\n\n"+prompt()+natPrompt()+"\n\n"+promptLangLock()}]}};
   if(attempt<3){s.inputAudioTranscription={};s.outputAudioTranscription={};
     s.realtimeInputConfig={automaticActivityDetection:{startOfSpeechSensitivity:"START_SENSITIVITY_LOW",prefixPaddingMs:240,silenceDurationMs:700},activityHandling:"START_OF_ACTIVITY_INTERRUPTS"}}
   if(attempt<2)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an on-screen card the user taps to confirm: a phone call that HE dials and speaks on himself, an SMS, a WhatsApp message, or map directions. Not for calls where you should do the talking.",
@@ -1083,12 +1084,12 @@ function handle(m){
       tm=setTimeout(function(){cb({error:"timeout",tell_user:"That did not finish in time. Tell him so in one short sentence and offer to try again."})},TLIM[fc.name]||10000);
       try{fn(fc.args||{},cb)}catch(e){cb({error:"failed"})}});return}
   var sc=m.serverContent;if(!sc)return;
-  if(sc.interrupted){if(speaking())DG.intr=(DG.intr||0)+1;flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
+  if(sc.interrupted){langFixed=false;if(speaking())DG.intr=(DG.intr||0)+1;flush();dropTurn=false;clearTimeout(bargeT);endTurn()}
   if(sc.inputTranscription&&sc.inputTranscription.text){if(acPend&&sc.inputTranscription.text.trim())acPend.heard=true;if(delPend&&delPend.armed&&sc.inputTranscription.text.trim())delPend.heard=true;if(!curMe){curMe=bubble("me","");qmAdd("turns")}curMe.textContent+=sc.inputTranscription.text;lastHeard=lastSpeechT=Date.now();$("#msgs").scrollTop=1e7;hushCheck()}
-  if(sc.outputTranscription&&sc.outputTranscription.text&&!hushed){if(!curAi){curAi=bubble("ai","")}curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7}
+  if(sc.outputTranscription&&sc.outputTranscription.text&&!hushed){if(!curAi){curAi=bubble("ai","");langBuf=""}curAi.textContent+=sc.outputTranscription.text;$("#msgs").scrollTop=1e7;langCheck(sc.outputTranscription.text)}
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn&&!hushed){if(meMark<0){meMark=curMe?curMe.textContent.length:0;if(lastSpeechT&&Date.now()-lastSpeechT<20000)qmAdd("lat",Date.now()-lastSpeechT);lastSpeechT=0}sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
-  if(sc.turnComplete){dropTurn=false;endTurn();infoWatch();if(delPend)delPend.armed=true;trySwap()}}
+  if(sc.turnComplete){langFixed=false;dropTurn=false;endTurn();infoWatch();if(delPend)delPend.armed=true;trySwap()}}
 function start(){if(document.body.classList.contains("locked")||!localStorage.getItem("musaed.cur")||AUTH_LOCKING)return;
   if(live)return;
   if(!get(K.key)){openCard("set");return}
@@ -1893,7 +1894,7 @@ function webSearch(a){a=a||{};var q=cS(a.query,300),kind=WSK[a.kind]?a.kind:"fac
   if(wsFly[ck])return wsFly[ck];
   wsState(true);
   var mk=function(cfg){var b={systemInstruction:{parts:[{text:wsSys(kind,en)}]},contents:[{role:"user",parts:[{text:q+(more?"\nDetails: "+more:"")+(kind==="place"&&locObj()?"\nUser position: "+locObj().lat.toFixed(4)+", "+locObj().lon.toFixed(4)+" ("+locLabel()+"). Prefer the places closest to this position and say how far each one is.":"")}]}],tools:[{google_search:{}}]};if(cfg)b.generationConfig={thinkingConfig:{thinkingLevel:"LOW"}};return b};
-  var p=wsSlot().then(function(){return gemAsk(deep?"smart":"fast",mk,deep?15000:9000)})
+  var p=wsSlot().then(function(){if(Date.now()<gsBlock){GTRAIL=["بحث Google وصل حده هالدقيقة"];return {s:429,j:null,model:"",info:{msg:"search limit",delay:60,day:false,zero:false}}}return gemAsk(deep?"smart":"fast",mk,deep?15000:9000,{grounded:true})})
   .then(function(r){used=r.model||"";DG.wsMsg="";if(r.s!==200||!r.j){DG.wsMsg=(r.info&&r.info.msg)||"";throw gemFail(r)}
     var cd=cArr(r.j.candidates)[0]||{},txt=cArr((cd.content||{}).parts).filter(function(x){return !x.thought}).map(function(x){return x.text||""}).join("").replace(/\*\*|^#+\s*/gm,"").trim(),gmd=cd.groundingMetadata||{},seen={},src=[];
     cArr(gmd.groundingChunks).forEach(function(g){var w=g&&g.web;if(!w||!/^https:\/\/\S+$/.test(w.uri||""))return;var t=cS(w.title,70)||"مصدر";if(seen[t])return;seen[t]=1;src.push({title:t,url:w.uri})});
@@ -1903,7 +1904,7 @@ function webSearch(a){a=a||{};var q=cS(a.query,300),kind=WSK[a.kind]?a.kind:"fac
     wsCache[ck]={t:Date.now(),r:res};wsLast={q:q,kind:kind,src:src.slice(0,6),at:Date.now()};DG.ws={ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1,trail:GTRAIL.join(" · ")};return res})
   .catch(function(e){var why=e&&e.message||"fail",tell=GTELL[why]||"The search service gave an error. Offer to try again.";
     DG.ws={err:why,ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1,trail:GTRAIL.join(" · ")};var fb={error:"search_failed",reason:why,tell_user:tell+" Do not answer from memory."};
-    return osmPlaces(q,kind).then(function(r){if(!r)return fb;DG.ws.osm=1;return r},function(){return fb})})
+    return freeAnswer(q,kind).then(function(r){if(!r)return fb;DG.ws.free=r.source;return r},function(){return fb})})
   .then(function(res){delete wsFly[ck];wsFree();wsState(false);showDiag();return res});
   wsFly[ck]=p;return p}
 /* nearby places from OpenStreetMap when Google search is unavailable */
@@ -1913,7 +1914,8 @@ var OSMT=[[/مطعم|مطاعم|اكل|أكل|غدا|عشا|فطور|برجر|ب
   [/مستشفى|مستشفي|طوارئ|hospital|emergency/i,'nwr["amenity"="hospital"]',"مستشفى"],[/مستوصف|عياده|عيادة|clinic/i,'nwr["amenity"~"^(clinic|doctors)$"]',"عيادة"],
   [/مسجد|جامع|صلاه|صلاة|mosque/i,'nwr["amenity"="place_of_worship"]["religion"="muslim"]',"مسجد"],[/صراف|atm/i,'nwr["amenity"="atm"]',"صراف"],[/بنك|bank/i,'nwr["amenity"="bank"]',"بنك"],
   [/فندق|hotel/i,'nwr["tourism"="hotel"]',"فندق"],[/مغسل|غسيل سيار|car wash/i,'nwr["amenity"="car_wash"]',"مغسلة"],[/حلاق|barber/i,'nwr["shop"~"^(hairdresser|barber)$"]',"حلاق"],[/مول|mall/i,'nwr["shop"="mall"]',"مول"]];
-function osmPlaces(q,kind){var o=locObj(),t=null,i;for(i=0;i<OSMT.length;i++)if(OSMT[i][0].test(q)){t=OSMT[i];break}
+function osmPlaces(q,kind){var t=null,i;for(i=0;i<OSMT.length;i++)if(OSMT[i][0].test(q)){t=OSMT[i];break}
+  if(t&&!locObj())return new Promise(function(res){var d=false,f=function(){if(d)return;d=true;res(locObj()?osmPlaces(q,kind):null)};setTimeout(f,9000);getLoc(f)});var o=locObj();
   if(!o||!t||(kind!=="place"&&!/أقرب|اقرب|قريب|حولي|جنبي|nearby|near me|nearest|closest/i.test(q)))return Promise.resolve(null);
   var ask=function(rad){var body="[out:json][timeout:9];("+t[1]+"(around:"+rad+","+o.lat.toFixed(5)+","+o.lon.toFixed(5)+"););out center 60;";
     return fetchT("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(body)},7000).then(function(r){if(!r.ok)throw new Error("osm "+r.status);return r.json()})};
@@ -1923,6 +1925,40 @@ function osmPlaces(q,kind){var o=locObj(),t=null,i;for(i=0;i<OSMT.length;i++)if(
     return {answer:l.map(function(x,n){return (n+1)+". "+x.name+" — "+kmText(x.d)+(x.cuisine?" · "+x.cuisine:"")+(x.hours?" · "+x.hours:"")}).join("\n"),found:true,checked_on_web:true,source:"OpenStreetMap (free map)",
       places:l.map(function(x){return {name:x.name,distance:kmText(x.d),cuisine:x.cuisine,hours:x.hours,lat:+x.lat.toFixed(5),lon:+x.lon.toFixed(5)}}),searched_at:p2(d.getHours())+":"+p2(d.getMinutes()),
       note:"Google search is over its free limit, so these "+t[2]+" places come from OpenStreetMap, sorted by distance from him. There are no ratings or prices. Give the closest two or three in short, and call show_places with them if he wants to see them."}})}
+/* free sources when Google search is unavailable */
+function fjson(u,ms){return fetchT(u,{},ms||7000).then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})}
+function freeStamp(){var d=new Date();return p2(d.getHours())+":"+p2(d.getMinutes())}
+var FXN={"دولار":"USD","يورو":"EUR","استرليني":"GBP","إسترليني":"GBP","جنيه استرليني":"GBP","درهم":"AED","دينار كويتي":"KWD","دينار بحريني":"BHD","دينار اردني":"JOD","دينار أردني":"JOD","ريال قطري":"QAR","ريال عماني":"OMR","جنيه مصري":"EGP","جنيه":"EGP","ين ياباني":"JPY","يوان":"CNY","روبية":"INR","ليرة تركية":"TRY","ليرة":"TRY","فرنك":"CHF","روبل":"RUB","dollar":"USD","usd":"USD","euro":"EUR","eur":"EUR","pound":"GBP","gbp":"GBP","aed":"AED","dirham":"AED","yen":"JPY","yuan":"CNY","rupee":"INR","lira":"TRY"};
+function kwHas(lq,n){return /^[a-z]+$/.test(n)?new RegExp("(^|[^a-z])"+n+"([^a-z]|$)").test(lq):lq.indexOf(n)>-1}
+function fxAnswer(q){var lq=q.toLowerCase(),hits=[];if(/[اإ]سترليني|pound sterling/.test(lq))lq=lq.replace(/جنيه/g," ");Object.keys(FXN).sort(function(a,b){return b.length-a.length}).forEach(function(n){var c=FXN[n];if(kwHas(lq,n)){lq=lq.split(n).join(" ");if(hits.indexOf(c)<0)hits.push(c)}});
+  if(!hits.length&&!/صرف|عمل[ةه]|exchange|currency/i.test(q))return null;if(!hits.length)hits=["USD","EUR","GBP","AED"];
+  var amt=+(natDigits(q).match(/(\d+(?:\.\d+)?)/)||[])[1]||1;
+  return fjson("https://open.er-api.com/v6/latest/SAR").then(function(j){var r=j&&j.rates||{};if(j.result!=="success")throw new Error("fx");
+    var rows=hits.filter(function(c){return r[c]}).map(function(c){var sar=1/r[c];return {currency:c,sar_per_unit:Math.round(sar*10000)/10000,amount:amt,in_sar:Math.round(amt*sar*100)/100}});if(!rows.length)return null;
+    return {answer:rows.map(function(x){return x.amount+" "+x.currency+" = "+fmt(x.in_sar)+" ريال"}).join("\n"),found:true,checked_on_web:true,source:"Exchange Rate API",sources:["Rates By Exchange Rate API"],rates:rows,updated:j.time_last_update_utc,searched_at:freeStamp(),
+      note:"Daily reference rates from Exchange Rate API (updated once a day, not live bank rates). Say the number and that banks add their margin."}})}
+function metalAnswer(q){var gold=/ذهب|gold/i.test(q),silv=/فض[ةه]|silver/i.test(q);if(!gold&&!silv)return null;var sym=gold?"XAU":"XAG";
+  return Promise.all([fjson("https://api.gold-api.com/price/"+sym),fjson("https://open.er-api.com/v6/latest/USD").catch(function(){return null})]).then(function(v){var j=v[0]||{},usd=+(j.price||j.price_usd||j.value);if(!(usd>0))throw new Error("metal");
+    var sarRate=(v[1]&&v[1].rates&&v[1].rates.SAR)||3.75,gram=usd/31.1035*sarRate,k=function(n){return Math.round(gram*n/24*100)/100};
+    var a=gold?["عيار 24: "+fmt(k(24))+" ريال للغرام","عيار 22: "+fmt(k(22)),"عيار 21: "+fmt(k(21)),"عيار 18: "+fmt(k(18)),"الأونصة: "+fmt(Math.round(usd*100)/100)+" دولار"]:["الفضة: "+fmt(Math.round(gram*100)/100)+" ريال للغرام","الأونصة: "+fmt(Math.round(usd*100)/100)+" دولار"];
+    return {answer:a.join("\n"),found:true,checked_on_web:true,source:"Gold API",sources:["gold-api.com"],usd_per_ounce:usd,sar_per_gram_24k:gold?k(24):undefined,searched_at:freeStamp(),
+      note:"Live world spot price converted to riyals per gram. Shop prices add workmanship (المصنعية). Say it in one or two lines."}})}
+var CGN={"بيتكوين":"bitcoin","bitcoin":"bitcoin","btc":"bitcoin","ايثريوم":"ethereum","إيثريوم":"ethereum","ethereum":"ethereum","eth":"ethereum","سولانا":"solana","solana":"solana","دوجكوين":"dogecoin","dogecoin":"dogecoin","xrp":"ripple","ريبل":"ripple","تيثر":"tether","usdt":"tether"};
+function cryptoAnswer(q){var lq=q.toLowerCase(),ids=[];Object.keys(CGN).forEach(function(n){if(kwHas(lq,n)&&ids.indexOf(CGN[n])<0)ids.push(CGN[n])});if(!ids.length&&!/كريبتو|عملات رقمي|crypto/i.test(q))return null;if(!ids.length)ids=["bitcoin","ethereum"];
+  return fjson("https://api.coingecko.com/api/v3/simple/price?ids="+ids.join(",")+"&vs_currencies=sar,usd&include_24hr_change=true").then(function(j){var rows=ids.filter(function(i){return j&&j[i]}).map(function(i){var x=j[i];return {coin:i,sar:x.sar,usd:x.usd,change_24h:Math.round((x.sar_24h_change||x.usd_24h_change||0)*10)/10}});if(!rows.length)return null;
+    return {answer:rows.map(function(x){return x.coin+": "+fmt(x.sar)+" ريال ("+(x.change_24h>=0?"+":"")+x.change_24h+"% خلال يوم)"}).join("\n"),found:true,checked_on_web:true,source:"CoinGecko",sources:["CoinGecko"],coins:rows,searched_at:freeStamp(),note:"Live prices from CoinGecko. No buy or sell advice."}})}
+function newsAnswer(q,kind){if(kind!=="news"&&!/خبر|أخبار|اخبار|news|headline|عاجل/i.test(q))return null;var topic=q.replace(/وش|ايش|إيش|آخر|اخر|أخبار|اخبار|الأخبار|الاخبار|خبر|اليوم|عن|news|latest|today|عاجل|\?|؟/gi," ").replace(/\s+/g," ").trim();
+  var ar=/[\u0600-\u06FF]/.test(q),u="https://api.gdeltproject.org/api/v2/doc/doc?query="+encodeURIComponent((topic||(ar?"السعودية":"Saudi Arabia"))+(ar?" sourcelang:arabic":""))+"&mode=artlist&format=json&maxrecords=8&sort=datedesc&timespan=2d";
+  return fjson(u,8000).then(function(j){var seen={},l=cArr(j&&j.articles).filter(function(a){var t=cS(a.title,160);if(!t||seen[t])return false;seen[t]=1;return true}).slice(0,6);if(!l.length)return null;
+    return {answer:l.map(function(a,n){return (n+1)+". "+cS(a.title,160)+" — "+cS(a.domain,40)}).join("\n"),found:true,checked_on_web:true,source:"GDELT",sources:l.map(function(a){return cS(a.domain,40)}),articles:l.map(function(a){return {title:cS(a.title,160),source:cS(a.domain,40),url:a.url}}),searched_at:freeStamp(),
+      note:"Latest headlines from the last two days (GDELT news index). Give the top two or three in short; you only have headlines, not full stories. Offer show_news."}})}
+function wikiAnswer(q){var ar=/[\u0600-\u06FF]/.test(q),host=ar?"ar":"en",term=q.replace(/مين|من هو|من هي|وش|ايش|إيش|ما هو|ما هي|متى|وين|عن|who is|what is|tell me about|\?|؟/gi," ").replace(/\s+/g," ").trim();if(term.length<2)return Promise.resolve(null);
+  return fjson("https://"+host+".wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch="+encodeURIComponent(term)).then(function(j){var h=cArr(j&&j.query&&j.query.search)[0];if(!h)return null;
+    return fjson("https://"+host+".wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(h.title.replace(/ /g,"_"))).then(function(s){var x=cS(s&&s.extract,1400);if(!x)return null;
+      return {answer:x,found:true,checked_on_web:true,source:"Wikipedia",sources:["ويكيبيديا: "+h.title],title:h.title,searched_at:freeStamp(),
+        note:"From Wikipedia, which can be out of date for recent events. Answer in short. If he asked about something happening now, say this is background and the live check is not available right now."}})})}
+function freeAnswer(q,kind){var tries=[function(){return kind==="place"||/أقرب|اقرب|قريب|حولي|جنبي|nearby|nearest|closest/i.test(q)?osmPlaces(q,"place"):null},function(){return metalAnswer(q)},function(){return cryptoAnswer(q)},function(){return fxAnswer(q)},function(){return newsAnswer(q,kind)},function(){return wikiAnswer(q)}],i=0;
+  return (function nx(){if(i>=tries.length)return Promise.resolve(null);var p=null;try{p=tries[i++]()}catch(e){p=null}if(!p)return nx();return Promise.resolve(p).then(function(r){return r||nx()},function(){return nx()})})()}
 TOOLS.web_search=function(a,cb){webSearch(a).then(cb)};
 TOOLS.show_sources=function(a,cb){if(!wsLast||!wsLast.src.length)return cb({error:"no sources: the last search returned none, or nothing was searched yet"});var l=wsLast.src;
   showAction({type:"card",key:"sources",icon:"note",tone:"open",title:"مصادر آخر بحث",tag:(l.length===1?"مصدر واحد":l.length===2?"مصدران":l.length+" مصادر")+" · اضغط للفتح",keep:true,blocks:[{t:"text",x:wsLast.q},{t:"opts",items:l.map(function(x){return {title:x.title}}),fn:function(ix){try{window.open(l[ix].url,"_blank","noopener")}catch(e){}}}]});
@@ -2037,16 +2073,16 @@ function gemErr(r){var e=(r.j&&r.j.error)||{},delay=0,qid="";cArr(e.details).for
   var msg=String(e.message||"");return {msg:msg.slice(0,170),delay:delay,day:/PerDay|per day|daily/i.test(qid+" "+msg),zero:/limit:\s*0\b/.test(msg)}}
 function gmDayEnd(){var n=new Date(),pt=new Date(n.toLocaleString("en-US",{timeZone:"America/Los_Angeles"})),nx=new Date(pt);nx.setHours(24,0,30,0);return n.getTime()+(nx-pt)}
 function gmBlockSet(m,until){gmBlock[m]=until;try{var o={},k;for(k in gmBlock)if(gmBlock[k]>Date.now())o[k]=gmBlock[k];localStorage.setItem("musaed.gmb",JSON.stringify(o))}catch(e){}}
-var GTRAIL=[];
-function gemAsk(pref,mk,ms){var key=get(K.key).trim(),t0=Date.now(),last=null;GTRAIL=[];
+var GTRAIL=[],gsBlock=0;
+function gemAsk(pref,mk,ms,opt){opt=opt||{};var key=get(K.key).trim(),t0=Date.now(),last=null,minRow=0;GTRAIL=[];
   return gemPick(key).then(function(gm){var order=[pref==="fast"?gm.fast:gm.smart,pref==="fast"?gm.smart:gm.fast].concat(cArr(gm.all)).filter(function(m,i,a){return m&&a.indexOf(m)===i}),i=0,tried=0,
     next=function(){var m=null;while(i<order.length){var c=order[i++];if(!(gmBlock[c]>Date.now())){m=c;break}}
       if(!m&&!tried)GTRAIL.push("كل النماذج المجانية وصلت حدها، تتجدد بعد منتصف الليل بتوقيت أمريكا");
       if(!m||(tried&&Date.now()-t0>ms-2000))return last||{s:429,j:null,model:"",info:{msg:"every model is over its limit right now",delay:0,day:true,zero:false}};
       tried++;var left=function(){return Math.max(2500,ms-(Date.now()-t0))};
       return wsFetch(m,key,mk(!wsNoCfg[m]),left()).then(function(r){if(r.s===400&&!wsNoCfg[m]){wsNoCfg[m]=1;return wsFetch(m,key,mk(false),left())}return r}).then(function(r){r.model=m;try{var gi=r.s===429?gemErr(r):null;GTRAIL.push(m.replace(/^gemini-/,"")+" "+(r.s===200?"✓":r.s===429?(gi.zero?"✗ غير متاح مجاناً":gi.day?"✗ انتهى اليوم":"✗ زحمة دقيقة"):"✗ "+r.s))}catch(e){}
-        if(r.s===429){r.info=gemErr(r);gmBlockSet(m,r.info.day||r.info.zero?gmDayEnd():Date.now()+Math.max(15,r.info.delay||45)*1000);last=r;return next()}
-        if(r.s===404||r.s===400){if(r.s===404)set(K.gm,"");last=r;return next()}
+        if(r.s===429){r.info=gemErr(r);if(opt.grounded&&!r.info.day&&!r.info.zero){if(++minRow>=2){gsBlock=Date.now()+60000;last=r;return r}}else minRow=0;gmBlockSet(m,r.info.day||r.info.zero?gmDayEnd():Date.now()+Math.max(15,r.info.delay||45)*1000);last=r;return next()}
+        if(r.s===404||r.s===400){if(r.s===404)gmBlockSet(m,Date.now()+7*864e5);last=r;return next()}
         return r})};
     return next()})}
 function wsSlot(){return new Promise(function(res){if(wsRun<2){wsRun++;res()}else wsWait.push(res)})}
@@ -2400,6 +2436,11 @@ function hushIt(how){if(!live||!ready)return;hushed=true;hushMe=curMe;flush();dr
     en=how==="tap"?"(I cut you off with a tap and did not hear the rest. Do not continue it and do not reply to this note; wait silently for what I say next.)":"(I told you to stop talking. Stop now, say nothing at all in reply to this note, and do not go back to what you were saying unless I ask; wait silently for what I say next.)";
   try{ws.send(JSON.stringify({realtimeInput:{text:isEn()?en:ar}}))}catch(e){}}
 var hushT=null;
+/* she must stay in Saudi Arabic: if a reply drifts into another language, stop it and have her say it again in Saudi Arabic */
+var langBuf="",langFixed=false;
+function langCheck(t){if(isEn()||langFixed||!live||!ready)return;langBuf+=t;var lat=(langBuf.match(/[A-Za-zÀ-ÿ]/g)||[]).length,ar=(langBuf.match(/[\u0600-\u06FF]/g)||[]).length;
+  if(lat<22||ar>lat/6)return;langFixed=true;DG.lang=(DG.lang||0)+1;flush();dropTurn=true;if(curAi){curAi.textContent="";curAi=null}
+  try{ws.send(JSON.stringify({realtimeInput:{text:"(انتبهي: آخر رد طلع بلغة غير العربية. أعيديه الحين باللهجة السعودية فقط، ولا تذكرين هذي الملاحظة.)"}}))}catch(e){}}
 function hushCheck(){if(!curMe)return;var mk=Math.max(0,meMark),me=curMe,seg=me.textContent.slice(mk);clearTimeout(hushT);
   if(hushWord(seg)){if(!hushed||curMe!==hushMe){var was=me.textContent;hushT=setTimeout(function(){if(me.textContent===was&&hushWord(me.textContent.slice(mk)))hushIt("voice")},650)}}
   else if(hushed&&!(MT&&MT.live)&&seg.trim()){hushed=false;hushMe=null;dropTurn=false}}
@@ -2447,9 +2488,9 @@ $("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-s
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
-function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")+natDiag()},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
+function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+(DG.lang?"\nتصحيح اللغة: "+DG.lang+" مرات":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")+natDiag()},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
-  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.osm?" · أجاب من الخريطة المجانية":"")+(DG.ws&&DG.ws.trail?"\nالنماذج: "+DG.ws.trail:"")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
+  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.free?" · أجاب من مصدر مجاني: "+DG.ws.free:"")+(DG.ws&&DG.ws.trail?"\nالنماذج: "+DG.ws.trail:"")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#qtBtn").onclick=qtRun;
