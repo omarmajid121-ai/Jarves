@@ -618,7 +618,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.13",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.14",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -629,7 +629,7 @@ var AUTH_LOCKING=false,STORE_FULL=0;
 function set(k,v){if(AUTH_LOCKING)return;try{localStorage.setItem(k,v)}catch(e){STORE_FULL=Date.now();if(!set.warned){set.warned=1;setTimeout(function(){try{toast("ذاكرة الجهاز ممتلئة، بعض البيانات ما انحفظت")}catch(x){}},0)}}}
 
 var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null,anIn=null,anOut=null,outBus=null;
-var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={bank_expenses:16000,phone_messages:12000,call_history:12000,contacts_find:12000,my_places:13000,place_reminder:14000,web_search:17000,read_page:24000,assistant_call:75000,confirm_call:75000,show_route:11000};
+var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={bank_expenses:16000,phone_messages:12000,call_history:12000,contacts_find:12000,my_places:13000,place_reminder:14000,web_search:26000,read_page:24000,assistant_call:75000,confirm_call:75000,show_route:11000};
 var live=false,ready=false,attempt=0,nextT=0,playing=[],dropTurn=false,pendingText="",mode="idle",startedAt=0,userEnded=false;
 var log=[],curMe=null,curAi=null,muted=false,hushed=false,hushMe=null,meMark=-1,langNote="";
 try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
@@ -1900,11 +1900,29 @@ function webSearch(a){a=a||{};var q=cS(a.query,300),kind=WSK[a.kind]?a.kind:"fac
     if(!txt)throw new Error("empty");
     var grounded=src.length>0||cArr(gmd.webSearchQueries).length>0,d=new Date(),res={answer:txt.slice(0,2600),found:!/NOT FOUND/.test(txt),checked_on_web:grounded,sources:src.slice(0,6).map(function(x){return x.title}),searched_at:p2(d.getHours())+":"+p2(d.getMinutes()),
       note:grounded?"Answer only from this. If he asks where it is from, name the sources or call show_sources.":"This answer did NOT come from a live web check. Tell him you could not confirm it on the web."};
-    wsCache[ck]={t:Date.now(),r:res};wsLast={q:q,kind:kind,src:src.slice(0,6),at:Date.now()};DG.ws={ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1};return res})
+    wsCache[ck]={t:Date.now(),r:res};wsLast={q:q,kind:kind,src:src.slice(0,6),at:Date.now()};DG.ws={ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1,trail:GTRAIL.join(" · ")};return res})
   .catch(function(e){var why=e&&e.message||"fail",tell=GTELL[why]||"The search service gave an error. Offer to try again.";
-    DG.ws={err:why,ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1};return {error:"search_failed",reason:why,tell_user:tell+" Do not answer from memory."}})
+    DG.ws={err:why,ms:Date.now()-t0,model:used,n:(DG.ws&&DG.ws.n||0)+1,trail:GTRAIL.join(" · ")};var fb={error:"search_failed",reason:why,tell_user:tell+" Do not answer from memory."};
+    return osmPlaces(q,kind).then(function(r){if(!r)return fb;DG.ws.osm=1;return r},function(){return fb})})
   .then(function(res){delete wsFly[ck];wsFree();wsState(false);showDiag();return res});
   wsFly[ck]=p;return p}
+/* nearby places from OpenStreetMap when Google search is unavailable */
+var OSMT=[[/مطعم|مطاعم|اكل|أكل|غدا|عشا|فطور|برجر|بيتزا|شاورما|مندي|كبسة|restaurant|food|burger|pizza|eat/i,'nwr["amenity"~"^(restaurant|fast_food|food_court)$"]',"مطعم"],
+  [/كافي|كوفي|قهوة|قهوه|مقهى|cafe|coffee/i,'nwr["amenity"="cafe"]',"مقهى"],[/صيدلي|pharmacy/i,'nwr["amenity"="pharmacy"]',"صيدلية"],
+  [/بنزين|محطة|محطه|وقود|fuel|gas station|petrol/i,'nwr["amenity"="fuel"]',"محطة وقود"],[/سوبر|بقال|هايبر|ماركت|supermarket|grocery/i,'nwr["shop"~"^(supermarket|convenience)$"]',"بقالة"],
+  [/مستشفى|مستشفي|طوارئ|hospital|emergency/i,'nwr["amenity"="hospital"]',"مستشفى"],[/مستوصف|عياده|عيادة|clinic/i,'nwr["amenity"~"^(clinic|doctors)$"]',"عيادة"],
+  [/مسجد|جامع|صلاه|صلاة|mosque/i,'nwr["amenity"="place_of_worship"]["religion"="muslim"]',"مسجد"],[/صراف|atm/i,'nwr["amenity"="atm"]',"صراف"],[/بنك|bank/i,'nwr["amenity"="bank"]',"بنك"],
+  [/فندق|hotel/i,'nwr["tourism"="hotel"]',"فندق"],[/مغسل|غسيل سيار|car wash/i,'nwr["amenity"="car_wash"]',"مغسلة"],[/حلاق|barber/i,'nwr["shop"~"^(hairdresser|barber)$"]',"حلاق"],[/مول|mall/i,'nwr["shop"="mall"]',"مول"]];
+function osmPlaces(q,kind){var o=locObj(),t=null,i;for(i=0;i<OSMT.length;i++)if(OSMT[i][0].test(q)){t=OSMT[i];break}
+  if(!o||!t||(kind!=="place"&&!/أقرب|اقرب|قريب|حولي|جنبي|nearby|near me|nearest|closest/i.test(q)))return Promise.resolve(null);
+  var ask=function(rad){var body="[out:json][timeout:9];("+t[1]+"(around:"+rad+","+o.lat.toFixed(5)+","+o.lon.toFixed(5)+"););out center 60;";
+    return fetchT("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(body)},7000).then(function(r){if(!r.ok)throw new Error("osm "+r.status);return r.json()})};
+  var pick=function(j){var seen={};return cArr(j&&j.elements).map(function(e){var tg=e.tags||{},la=e.lat||(e.center&&e.center.lat),lo=e.lon||(e.center&&e.center.lon),nm=tg["name:ar"]||tg.name||tg["name:en"]||"";
+      if(!nm||!la)return null;return {name:nm,en:tg["name:en"]&&tg["name:en"]!==nm?tg["name:en"]:"",d:distM(o,{lat:la,lon:lo}),cuisine:cS(tg.cuisine,40).replace(/;/g,"، "),hours:cS(tg.opening_hours,60),lat:la,lon:lo}}).filter(function(x){if(!x||seen[x.name])return false;seen[x.name]=1;return true}).sort(function(a,b){return a.d-b.d}).slice(0,8)};
+  return ask(2500).then(function(j){var l=pick(j);return l.length>=3?l:ask(7000).then(pick)}).then(function(l){if(!l.length)return null;var d=new Date();
+    return {answer:l.map(function(x,n){return (n+1)+". "+x.name+" — "+kmText(x.d)+(x.cuisine?" · "+x.cuisine:"")+(x.hours?" · "+x.hours:"")}).join("\n"),found:true,checked_on_web:true,source:"OpenStreetMap (free map)",
+      places:l.map(function(x){return {name:x.name,distance:kmText(x.d),cuisine:x.cuisine,hours:x.hours,lat:+x.lat.toFixed(5),lon:+x.lon.toFixed(5)}}),searched_at:p2(d.getHours())+":"+p2(d.getMinutes()),
+      note:"Google search is over its free limit, so these "+t[2]+" places come from OpenStreetMap, sorted by distance from him. There are no ratings or prices. Give the closest two or three in short, and call show_places with them if he wants to see them."}})}
 TOOLS.web_search=function(a,cb){webSearch(a).then(cb)};
 TOOLS.show_sources=function(a,cb){if(!wsLast||!wsLast.src.length)return cb({error:"no sources: the last search returned none, or nothing was searched yet"});var l=wsLast.src;
   showAction({type:"card",key:"sources",icon:"note",tone:"open",title:"مصادر آخر بحث",tag:(l.length===1?"مصدر واحد":l.length===2?"مصدران":l.length+" مصادر")+" · اضغط للفتح",keep:true,blocks:[{t:"text",x:wsLast.q},{t:"opts",items:l.map(function(x){return {title:x.title}}),fn:function(ix){try{window.open(l[ix].url,"_blank","noopener")}catch(e){}}}]});
@@ -2019,12 +2037,14 @@ function gemErr(r){var e=(r.j&&r.j.error)||{},delay=0,qid="";cArr(e.details).for
   var msg=String(e.message||"");return {msg:msg.slice(0,170),delay:delay,day:/PerDay|per day|daily/i.test(qid+" "+msg),zero:/limit:\s*0\b/.test(msg)}}
 function gmDayEnd(){var n=new Date(),pt=new Date(n.toLocaleString("en-US",{timeZone:"America/Los_Angeles"})),nx=new Date(pt);nx.setHours(24,0,30,0);return n.getTime()+(nx-pt)}
 function gmBlockSet(m,until){gmBlock[m]=until;try{var o={},k;for(k in gmBlock)if(gmBlock[k]>Date.now())o[k]=gmBlock[k];localStorage.setItem("musaed.gmb",JSON.stringify(o))}catch(e){}}
-function gemAsk(pref,mk,ms){var key=get(K.key).trim(),t0=Date.now(),last=null;
+var GTRAIL=[];
+function gemAsk(pref,mk,ms){var key=get(K.key).trim(),t0=Date.now(),last=null;GTRAIL=[];
   return gemPick(key).then(function(gm){var order=[pref==="fast"?gm.fast:gm.smart,pref==="fast"?gm.smart:gm.fast].concat(cArr(gm.all)).filter(function(m,i,a){return m&&a.indexOf(m)===i}),i=0,tried=0,
     next=function(){var m=null;while(i<order.length){var c=order[i++];if(!(gmBlock[c]>Date.now())){m=c;break}}
+      if(!m&&!tried)GTRAIL.push("كل النماذج المجانية وصلت حدها، تتجدد بعد منتصف الليل بتوقيت أمريكا");
       if(!m||(tried&&Date.now()-t0>ms-2000))return last||{s:429,j:null,model:"",info:{msg:"every model is over its limit right now",delay:0,day:true,zero:false}};
       tried++;var left=function(){return Math.max(2500,ms-(Date.now()-t0))};
-      return wsFetch(m,key,mk(!wsNoCfg[m]),left()).then(function(r){if(r.s===400&&!wsNoCfg[m]){wsNoCfg[m]=1;return wsFetch(m,key,mk(false),left())}return r}).then(function(r){r.model=m;
+      return wsFetch(m,key,mk(!wsNoCfg[m]),left()).then(function(r){if(r.s===400&&!wsNoCfg[m]){wsNoCfg[m]=1;return wsFetch(m,key,mk(false),left())}return r}).then(function(r){r.model=m;try{var gi=r.s===429?gemErr(r):null;GTRAIL.push(m.replace(/^gemini-/,"")+" "+(r.s===200?"✓":r.s===429?(gi.zero?"✗ غير متاح مجاناً":gi.day?"✗ انتهى اليوم":"✗ زحمة دقيقة"):"✗ "+r.s))}catch(e){}
         if(r.s===429){r.info=gemErr(r);gmBlockSet(m,r.info.day||r.info.zero?gmDayEnd():Date.now()+Math.max(15,r.info.delay||45)*1000);last=r;return next()}
         if(r.s===404||r.s===400){if(r.s===404)set(K.gm,"");last=r;return next()}
         return r})};
@@ -2429,7 +2449,7 @@ function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
 function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")+natDiag()},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
-  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
+  e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.osm?" · أجاب من الخريطة المجانية":"")+(DG.ws&&DG.ws.trail?"\nالنماذج: "+DG.ws.trail:"")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
 function closeCard(){$("#card").classList.remove("open");$("#gripText").textContent="اسحب للأعلى";if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}
 $("#qtBtn").onclick=qtRun;

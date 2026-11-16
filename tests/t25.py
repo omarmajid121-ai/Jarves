@@ -47,3 +47,37 @@ async def go():
         await b.close()
     srv.terminate();print("\nFINDINGS:",len(FIND));[print(" ",f) for f in FIND]
 asyncio.run(go())
+# ---- part 2: every Google model over its limit -> nearby places from the free map
+FULL2=set(MODELS)
+async def gapi2(route):
+    u=route.request.url
+    if "/models?" in u: return await route.fulfill(json={"models":[{"name":"models/"+m,"supportedGenerationMethods":["generateContent"]} for m in MODELS]})
+    if ":generateContent" in u: return await route.fulfill(status=429,json=q429(True))
+    return await route.fulfill(json={})
+OSM={"elements":[{"type":"node","lat":24.7140,"lon":46.6760,"tags":{"amenity":"restaurant","name":"مطعم البيك","cuisine":"chicken"}},
+ {"type":"way","center":{"lat":24.7200,"lon":46.6800},"tags":{"amenity":"fast_food","name":"Kudu","name:ar":"كودو"}},
+ {"type":"node","lat":24.7135,"lon":46.6752,"tags":{"amenity":"restaurant","name":"Najd Village","name:ar":"قرية نجد","opening_hours":"12:00-24:00"}},
+ {"type":"node","lat":24.7300,"lon":46.7000,"tags":{"amenity":"restaurant"}}]}
+async def go2():
+    async with async_playwright() as p:
+        b=await p.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox"])
+        c=await b.new_context();pg=await c.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)[:200]))
+        await c.route("**/generativelanguage.googleapis.com/**",gapi2)
+        seen=[]
+        async def osm(route): seen.append(route.request.post_data or "");await route.fulfill(json=OSM)
+        await c.route("**/overpass-api.de/**",osm)
+        for u in ["**/api.open-meteo.com/**","**/api.aladhan.com/**","**/api.bigdatacloud.net/**"]: await c.route(u,lambda r:r.fulfill(json={}))
+        srv2=subprocess.Popen(["python3","-m","http.server","8772","--bind","127.0.0.1"],cwd="/home/claude/jarves",stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
+        await pg.goto("http://127.0.0.1:8772/index.html");await pg.evaluate("localStorage.clear()");await pg.reload();await pg.wait_for_timeout(800);await signup(pg)
+        await pg.evaluate("localStorage.setItem('musaed.key','AIzaTEST');localStorage.setItem('musaed.loc',JSON.stringify({lat:24.7136,lon:46.6753,city:'الرياض',t:Date.now()}))");await pg.reload();await pg.wait_for_timeout(1800)
+        r=await pg.evaluate("__nt.tool('web_search',{query:'وين أقرب مطعم',kind:'place'})")
+        print(" all Google models over limit -> places:",json.dumps(r.get("places"),ensure_ascii=False)[:300])
+        print(" answer:",r.get("answer","").replace("\n"," | ")[:200],"| error:",r.get("error"))
+        if not r.get("places") or r["places"][0]["name"]!="قرية نجد": F("HIGH","places","map fallback did not give nearest places")
+        r2=await pg.evaluate("__nt.tool('web_search',{query:'كم سعر الذهب'})");print(" non-place search still reports the limit:",r2.get("error"),r2.get("reason"))
+        if r2.get("places"): F("MED","search","map used for a non-place question")
+        await pg.evaluate("__t.openCard('set')");await pg.wait_for_timeout(800);dg=await pg.text_content("#diag")
+        print(" status:",[l for l in dg.split("\n") if l.startswith("البحث") or l.startswith("النماذج")])
+        print(" errors:",errs);await b.close();srv2.terminate()
+    print("\nFINDINGS total:",len(FIND))
+asyncio.run(go2())
