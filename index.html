@@ -391,6 +391,33 @@ body.big #act,body.big #sheet,body.big #brief,body.big #card{zoom:1.12}
 .tile{position:relative;isolation:isolate;background:linear-gradient(160deg,rgba(var(--tt,255,255,255),.10),rgba(40,40,46,.42) 70%);-webkit-backdrop-filter:blur(30px) saturate(190%);backdrop-filter:blur(30px) saturate(190%);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 14px 40px rgba(0,0,0,.35)}
 .tile::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:linear-gradient(140deg,rgba(255,255,255,.16),rgba(255,255,255,0) 45%)}
 @media (prefers-reduced-motion:reduce){body[data-live] #state::before{animation:none}}
+/* ---- accounts on this phone ---- */
+#auth{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px 18px calc(24px + env(safe-area-inset-bottom));background:radial-gradient(120% 70% at 50% 0%,rgba(110,123,255,.32),rgba(0,0,0,0) 60%),radial-gradient(90% 60% at 80% 100%,rgba(181,124,255,.22),rgba(0,0,0,0) 60%),#000;overflow-y:auto}
+body.locked #auth{display:flex}
+body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.locked #dock{visibility:hidden}
+#authBox{position:relative;isolation:isolate;width:100%;max-width:400px;border-radius:34px;padding:28px 22px 22px;background:rgba(40,40,46,.42);-webkit-backdrop-filter:blur(34px) saturate(190%);backdrop-filter:blur(34px) saturate(190%);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 24px 60px rgba(0,0,0,.5);color:#fff;display:flex;flex-direction:column;gap:14px}
+#authBox::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:linear-gradient(140deg,rgba(255,255,255,.18),rgba(255,255,255,0) 45%)}
+#authBox h2{margin:0;font-size:30px;line-height:36px;font-weight:700;text-align:center}
+#authBox .sub{margin:-6px 0 4px;text-align:center;font-size:15px;color:rgba(255,255,255,.66)}
+#authSeg{display:flex;gap:4px;padding:3px;border-radius:12px;background:rgba(118,118,128,.24)}
+#authSeg button{flex:1;height:36px;border:0;border-radius:9px;background:transparent;color:#fff;font:inherit;font-size:15px;font-weight:600}
+#authSeg button[aria-selected=true]{background:rgba(255,255,255,.22);box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.af{display:flex;flex-direction:column;gap:6px}
+.af label{font-size:13px;font-weight:600;color:rgba(255,255,255,.72)}
+.af .in{position:relative}
+.af input{width:100%;box-sizing:border-box;height:50px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:17px;padding:0 14px}
+.af input:focus{outline:none;border-color:#64D2FF;box-shadow:0 0 0 3px rgba(100,210,255,.25)}
+.af input[dir=ltr]{text-align:left}
+#auPass,#auPass2{padding-left:52px!important}
+.af .eye{position:absolute;left:4px;top:3px;width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.7);display:grid;place-items:center}
+#authErr{min-height:20px;margin:0;font-size:14px;line-height:20px;color:#FF6961}
+#authErr.ok{color:#30D158}
+#authGo{height:54px;border:0;border-radius:27px;background:#fff;color:#000;font:inherit;font-size:17px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 18px rgba(0,0,0,.25)}
+#authGo:disabled{opacity:.55}
+#authNote{margin:0;font-size:13px;line-height:19px;color:rgba(255,255,255,.6);text-align:center}
+#authForgot{border:0;background:transparent;color:#64D2FF;font:inherit;font-size:15px;min-height:44px}
+#authMove{margin:0;padding:10px 12px;border-radius:12px;background:rgba(100,210,255,.12);font-size:14px;line-height:20px}
+
 </style>
 </head>
 <body data-mode="idle">
@@ -447,6 +474,22 @@ body.big #act,body.big #sheet,body.big #brief,body.big #card{zoom:1.12}
   <div class="abtns"><a id="sheetGo" class="pri" href="#" hidden></a><button id="sheetSecond" class="sec" type="button" hidden></button><button id="sheetClose" class="sec" type="button">إغلاق</button></div>
 </section>
 
+<div id="auth" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <form id="authBox" novalidate>
+    <h2 id="authTitle">مساعد</h2>
+    <p class="sub" id="authSub">سجّل دخولك</p>
+    <div id="authSeg" role="tablist"><button type="button" role="tab" id="authTabIn" aria-selected="true">دخول</button><button type="button" role="tab" id="authTabUp" aria-selected="false">حساب جديد</button></div>
+    <div class="af" id="afName" hidden><label for="auName">اسمك</label><div class="in"><input id="auName" type="text" autocomplete="name" maxlength="40"></div></div>
+    <div class="af"><label for="auEmail">البريد الإلكتروني</label><div class="in"><input id="auEmail" type="email" dir="ltr" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="120"></div></div>
+    <div class="af"><label for="auPass">كلمة المرور</label><div class="in"><input id="auPass" type="password" dir="ltr" autocomplete="current-password" maxlength="128"><button type="button" class="eye" id="auEye" aria-label="إظهار كلمة المرور"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div></div>
+    <div class="af" id="afPass2" hidden><label for="auPass2">أعد كلمة المرور</label><div class="in"><input id="auPass2" type="password" dir="ltr" autocomplete="new-password" maxlength="128"></div></div>
+    <p id="authMove" hidden>البيانات الموجودة على هذا الجهاز الآن بتنضم لحسابك الجديد.</p>
+    <p id="authErr" role="alert"></p>
+    <button id="authGo" type="submit">دخول</button>
+    <button id="authForgot" type="button">نسيت كلمة المرور؟</button>
+    <p id="authNote">كل حساب له بياناته وذاكرته الخاصة. البيانات تبقى على هذا الجهاز ومقفلة بكلمة المرور.</p>
+  </form>
+</div>
 <section id="card" aria-label="المحادثة والإعدادات">
   <button id="grip" aria-label="فتح البطاقة أو إغلاقها"><i></i><span id="gripText" hidden></span></button>
   <div class="cardbody">
@@ -490,7 +533,14 @@ body.big #act,body.big #sheet,body.big #brief,body.big #card{zoom:1.12}
       <ul id="exList" class="group" style="list-style:none;margin:0;padding:0" hidden></ul>
     </div>
     <div class="pane settings" id="paneSet">
-      <p class="ghdr">الحالة</p>
+      <p class="ghdr">الحساب</p>
+      <div class="group"><div class="cell" style="flex-direction:column;align-items:flex-start;gap:2px"><b id="acName" style="font-size:17px"></b><span id="acEmail" dir="ltr" style="font-size:14px;color:rgba(255,255,255,.66)"></span></div>
+        <button class="cell plain" id="acPass" type="button">تغيير كلمة المرور</button><button class="cell plain" id="acOut" type="button">تسجيل الخروج</button><button class="cell plain danger" id="acDel" type="button">حذف حسابي وكل بياناته</button></div>
+      <p class="gftr">كل حساب على هذا الجهاز له بياناته وذاكرته الخاصة، ولا يشوف أحد بيانات الثاني.</p>
+      <p class="ghdr" style="margin-top:0">الصلاحيات</p>
+      <div class="group" id="permG"></div>
+      <p class="gftr">إذا كانت الصلاحية مرفوضة، افتح إعدادات المتصفح للموقع واسمح بها.</p>
+      <p class="ghdr" style="margin-top:0">الحالة</p>
       <div class="group"><div id="diag" style="padding:12px 16px;font-size:15px;line-height:24px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text"></div></div>
       <div class="group"><button class="cell plain" id="lmBtn" type="button">الرجوع للنموذج الصوتي السابق</button></div>
       <div class="group"><button class="cell plain" id="qtBtn" type="button">اختبار الفهم (25 جملة)</button><button class="cell plain" id="ntfBtn" type="button">تفعيل التنبيهات</button><button class="cell plain" id="prmBtn" type="button">وضع الصلاة: يعمل</button><button class="cell plain" id="bigBtn" type="button">حجم الخط: عادي</button><button class="cell plain" id="coreBtn" type="button">شكل النواة: الحلقات</button></div>
@@ -565,7 +615,7 @@ body.big #act,body.big #sheet,body.big #brief,body.big #card{zoom:1.12}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.6",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.7",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -2226,7 +2276,7 @@ TOOLS.prayer_mode=function(a,cb){a=a||{};if(typeof a.on==="boolean"){set(K.prm,a
   cb({on:prOn(),in_prayer_time:p?p.name:null,ramadan:ramInfo(),note:"When on: no reminders or suggestions during prayer time except urgent ones, a quiet notice before each prayer, and in Ramadan suhoor and iftar notices."})};
 /* ---- moments engine ---- */
 var momBusy=false;
-function momTick(){if(momBusy)return;var now=Date.now(),d=new Date(),m=d.getHours()*60+d.getMinutes();
+function momTick(){if(momBusy||document.body.classList.contains("locked"))return;var now=Date.now(),d=new Date(),m=d.getHours()*60+d.getMinutes();
   if(BR.p&&prOn()){var k,t;for(k in PRW){t=hm(BR.p[k]);if(t>=0&&t-m>0&&t-m<=10)moment({k:"pray|"+dayKey()+"|"+k,title:"صلاة "+PRA[k]+" بعد "+arN(t-m,AMN),tag:"الأذان "+t12(t),card:{type:"card",key:"pray_notice",icon:"prayer",tone:"info",info:true,title:"صلاة "+PRA[k]+" بعد "+arN(t-m,AMN),tag:"الأذان "+t12(t)}})}
     var ri=ramInfo();if(ri){if(ri.iftar_in_min!=null&&ri.iftar_in_min<=30&&ri.iftar_in_min>0)moment({k:"iftar|"+dayKey(),title:"الإفطار بعد "+arN(ri.iftar_in_min,AMN),tag:"المغرب "+ri.iftar,card:{type:"card",key:"iftar",icon:"moon",tone:"info",info:true,title:"الإفطار بعد "+arN(ri.iftar_in_min,AMN),tag:"أذان المغرب "+ri.iftar}});
       if(ri.suhoor_in_min!=null&&ri.suhoor_in_min<=45&&ri.suhoor_in_min>0)moment({k:"suhoor|"+dayKey(new Date(now+36e5)),title:"السحور: باقي "+arN(ri.suhoor_in_min,AMN),tag:"الإمساك "+ri.suhoor_ends,card:{type:"card",key:"suhoor",icon:"moon",tone:"info",info:true,title:"باقي على الفجر "+arN(ri.suhoor_in_min,AMN),tag:"آخر وقت للسحور "+ri.suhoor_ends}})}}
@@ -2374,7 +2424,7 @@ $("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-s
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
-function showDiag(){var e=$("#diag");if(!e)return;try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+="\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
+function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+="\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
   e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
@@ -2389,7 +2439,90 @@ $("#prmBtn").onclick=function(){set(K.prm,prOn()?"0":"1");showDiag();toast(prOn(
 $("#lmBtn").onclick=function(){if(modelPick()===MODEL_NEW)set(K.lm,JSON.stringify({m:"old",why:"user",t:Date.now()}));else set(K.lm,"");showDiag();toast(modelPick()===MODEL_NEW?"النموذج الصوتي: الأحدث":"النموذج الصوتي: السابق");if(live){stop();start()}};
 $("#mmClear").onclick=function(){var b=this;if(b.dataset.arm==="1"){b.dataset.arm="";b.textContent="مسح الذاكرة وسجل المحادثات";memWipe();toast("مُسحت الذاكرة والسجل");return}b.dataset.arm="1";b.textContent="اضغط مرة ثانية للتأكيد";setTimeout(function(){b.dataset.arm="";b.textContent="مسح الذاكرة وسجل المحادثات"},4000)};
 $("#saveBtn").onclick=function(){set(K.gid,$("#gidIn").value.trim());set(K.key,$("#keyIn").value.trim());set(K.name,$("#nameIn").value.trim());set(K.voice,$("#voiceIn").value);if(live)stop();closeCard();if(get(K.key))start()};
-swInit();qsBoot();lrStart();document.body.classList.toggle("driving",drvOn());document.body.classList.toggle("big",get("musaed.big")==="1");livePill();setTimeout(momTick,6000);setInterval(momTick,60000);
+
+/* ================= accounts on this phone: separate data and memory per user ================= */
+var AU={users:function(){try{var a=JSON.parse(localStorage.getItem("musaed.users")||"[]");return Array.isArray(a)?a.filter(function(u){return u&&u.id&&u.email}):[]}catch(e){return []}},
+  save:function(l){localStorage.setItem("musaed.users",JSON.stringify(l))},cur:function(){return localStorage.getItem("musaed.cur")||""},
+  me:function(){var c=AU.cur();return AU.users().filter(function(u){return u.id===c})[0]||null}};
+var AUTH_SKIP={"musaed.users":1,"musaed.cur":1};
+function rawKeys(){var o=[],i,k;for(i=0;i<localStorage.length;i++){k=localStorage.key(i);if(k&&k.indexOf("musaed.")===0&&!AUTH_SKIP[k])o.push(k)}return o}
+function vaultKeys(uid){var o=[],i,k,pre="musaed@"+uid+".";for(i=0;i<localStorage.length;i++){k=localStorage.key(i);if(k&&k.indexOf(pre)===0)o.push(k)}return o}
+function b64(buf){var s="",a=new Uint8Array(buf),i;for(i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s)}
+function unb64(t){var s=atob(t),a=new Uint8Array(s.length),i;for(i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+function pwHash(pw,salt,it){return crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]).then(function(k){return crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:salt,iterations:it},k,256)}).then(b64)}
+function idbAll(name){return new Promise(function(res){try{var r=indexedDB.open(name,1);r.onupgradeneeded=function(){r.result.createObjectStore("files")};r.onerror=function(){res({db:null,rows:[]})};
+  r.onsuccess=function(){var db=r.result,rows=[];try{var st=db.transaction("files").objectStore("files"),c=st.openCursor();c.onsuccess=function(){var x=c.result;if(x){rows.push([x.key,x.value]);x.continue()}else res({db:db,rows:rows})};c.onerror=function(){res({db:db,rows:rows})}}catch(e){res({db:db,rows:rows})}}}catch(e){res({db:null,rows:[]})}})}
+function idbPut(name,rows){return new Promise(function(res){try{var r=indexedDB.open(name,1);r.onupgradeneeded=function(){r.result.createObjectStore("files")};r.onerror=function(){res(false)};
+  r.onsuccess=function(){var db=r.result;try{var tx=db.transaction("files","readwrite"),st=tx.objectStore("files");st.clear();rows.forEach(function(x){st.put(x[1],x[0])});tx.oncomplete=function(){db.close();res(true)};tx.onerror=function(){db.close();res(false)}}catch(e){db.close();res(false)}}}catch(e){res(false)}})}
+function idbDrop(name){return new Promise(function(res){try{var r=indexedDB.deleteDatabase(name);r.onsuccess=r.onerror=r.onblocked=function(){res()}}catch(e){res()}})}
+/* the signed-in user's data lives in the normal places; everyone else's is kept apart under their own name */
+function stash(uid){var ks=rawKeys();ks.forEach(function(k){localStorage.setItem("musaed@"+uid+"."+k.slice(7),localStorage.getItem(k))});
+  return idbAll("musaed").then(function(r){if(r.db)r.db.close();return idbPut("musaed@"+uid,r.rows).then(function(ok){if(!ok)throw new Error("copy");ks.forEach(function(k){localStorage.removeItem(k)});return idbPut("musaed",[])})})}
+function unstash(uid){var orphan=rawKeys();var pre="musaed@"+uid+".";
+  var go=function(){vaultKeys(uid).forEach(function(k){localStorage.setItem("musaed."+k.slice(pre.length),localStorage.getItem(k))});
+    return idbAll("musaed@"+uid).then(function(r){if(r.db)r.db.close();return idbPut("musaed",r.rows).then(function(ok){if(!ok)throw new Error("copy");vaultKeys(uid).forEach(function(k){localStorage.removeItem(k)});return idbDrop("musaed@"+uid)})})};
+  return orphan.length?stash("orphan"+Date.now().toString(36)).then(go):go()}
+var auMode="in",auBusy=false,auFails=0,auWait=0;
+function authErr(t,ok){var e=$("#authErr");e.textContent=t||"";e.className=ok?"ok":""}
+function authSet(m){auMode=m;var up=m==="up",first=!AU.users().length;$("#authTabIn").setAttribute("aria-selected",String(!up));$("#authTabUp").setAttribute("aria-selected",String(up));
+  $("#afName").hidden=!up;$("#afPass2").hidden=!up;$("#authGo").textContent=up?"إنشاء الحساب":"دخول";$("#authSub").textContent=up?(first?"أنشئ حسابك لتبدأ":"حساب جديد على هذا الجهاز"):"سجّل دخولك";
+  $("#auPass").setAttribute("autocomplete",up?"new-password":"current-password");$("#authMove").hidden=!(up&&first&&rawKeys().length);$("#authForgot").hidden=up;authErr("");$("#authSeg").hidden=first}
+function authShow(){document.body.classList.add("locked");authSet(AU.users().length?"in":"up");setTimeout(function(){try{$(AU.users().length?"#auEmail":"#auName").focus()}catch(e){}},300)}
+function emailOk(e){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)}
+function authSubmit(ev){if(ev)ev.preventDefault();if(auBusy)return;var em=$("#auEmail").value.trim().toLowerCase(),pw=$("#auPass").value,up=auMode==="up";
+  if(!emailOk(em))return authErr("اكتب بريد إلكتروني صحيح");
+  if(up){var nm=$("#auName").value.trim();if(!nm)return authErr("اكتب اسمك");if(pw.length<8)return authErr("كلمة المرور 8 أحرف على الأقل");if(pw!==$("#auPass2").value)return authErr("كلمتا المرور غير متطابقتين");
+    if(AU.users().some(function(u){return u.email===em}))return authErr("هذا البريد له حساب على هذا الجهاز. اختر «دخول».");
+    auBusy=true;$("#authGo").disabled=true;authErr("أنشئ الحساب…",true);var salt=crypto.getRandomValues(new Uint8Array(16)),it=210000,first=!AU.users().length;
+    return pwHash(pw,salt,it).then(function(h){var u={id:"u"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36),email:em,name:nm,salt:b64(salt),hash:h,it:it,t:Date.now()};
+      var done=function(){var l=AU.users();l.push(u);AU.save(l);localStorage.setItem("musaed.cur",u.id);localStorage.setItem("musaed.name",nm);location.reload()};
+      if(first)return done();return (rawKeys().length?stash("orphan"+Date.now().toString(36)):Promise.resolve()).then(done)})
+    .catch(function(){auBusy=false;$("#authGo").disabled=false;authErr("تعذّر إنشاء الحساب. حاول مرة ثانية.")})}
+  if(Date.now()<auWait)return authErr("محاولات كثيرة. انتظر "+Math.ceil((auWait-Date.now())/1000)+" ثانية.");
+  var u=AU.users().filter(function(x){return x.email===em})[0];auBusy=true;$("#authGo").disabled=true;authErr("");
+  (u?pwHash(pw,unb64(u.salt),u.it||210000):Promise.resolve("x")).then(function(h){
+    if(!u||h!==u.hash){auBusy=false;$("#authGo").disabled=false;auFails++;if(auFails>=5){auWait=Date.now()+Math.min(300000,30000*Math.pow(2,auFails-5))}return authErr("البريد أو كلمة المرور غير صحيحة")}
+    authErr("أفتح حسابك…",true);return unstash(u.id).then(function(){localStorage.setItem("musaed.cur",u.id);location.reload()})})
+  .catch(function(){auBusy=false;$("#authGo").disabled=false;authErr("تعذّر فتح الحساب. حاول مرة ثانية.")})}
+function authOut(){try{if(live)stop()}catch(e){}var c=AU.cur();if(!c)return;toast("أقفل حسابك…");stash(c).then(function(){localStorage.removeItem("musaed.cur");location.reload()}).catch(function(){toast("تعذّر تسجيل الخروج، حاول مرة ثانية")})}
+function authAsk(title,fields,btn,danger,fn){var box=document.createElement("div");box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.style.cssText="position:fixed;inset:0;z-index:210;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.6)";
+  box.innerHTML='<form style="width:100%;max-width:380px" id="authAskF"></form>';var f=box.firstChild;f.className="";f.id="authAskF";f.setAttribute("novalidate","");
+  var card=document.createElement("div");card.style.cssText="position:relative;border-radius:30px;padding:22px 18px 18px;background:rgba(44,44,50,.92);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);color:#fff;display:flex;flex-direction:column;gap:12px";
+  var h=document.createElement("div");h.style.cssText="font-size:20px;font-weight:700";h.textContent=title;card.appendChild(h);
+  var ins=fields.map(function(fd,i){var w=document.createElement("div");w.className="af";var l=document.createElement("label");l.textContent=fd.label;l.htmlFor="aa"+i;var inp=document.createElement("input");inp.id="aa"+i;inp.type=fd.type||"password";inp.dir="ltr";inp.autocomplete=fd.ac||"off";l.className="";w.appendChild(l);var d=document.createElement("div");d.className="in";d.appendChild(inp);w.appendChild(d);card.appendChild(w);return inp});
+  var er=document.createElement("p");er.style.cssText="margin:0;min-height:20px;font-size:14px;color:#FF6961";er.setAttribute("role","alert");card.appendChild(er);
+  var row=document.createElement("div");row.style.cssText="display:flex;gap:10px";var no=document.createElement("button");no.type="button";no.textContent="إلغاء";no.style.cssText="flex:1;height:52px;border-radius:26px;border:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:17px;font-weight:600";
+  var ok=document.createElement("button");ok.type="submit";ok.textContent=btn;ok.style.cssText="flex:1;height:52px;border-radius:26px;border:0;font:inherit;font-size:17px;font-weight:700;"+(danger?"background:#FF453A;color:#fff":"background:#fff;color:#000");row.appendChild(no);row.appendChild(ok);card.appendChild(row);f.appendChild(card);
+  document.body.appendChild(box);setTimeout(function(){try{ins[0].focus()}catch(e){}},100);no.onclick=function(){box.remove()};
+  f.onsubmit=function(e){e.preventDefault();ok.disabled=true;fn(ins.map(function(x){return x.value}),function(msg){if(msg){er.textContent=msg;ok.disabled=false}else box.remove()})}}
+function authCheck(u,pw){return pwHash(pw,unb64(u.salt),u.it||210000).then(function(h){return h===u.hash})}
+function authPass(){var u=AU.me();if(!u)return;authAsk("تغيير كلمة المرور",[{label:"كلمة المرور الحالية",ac:"current-password"},{label:"كلمة المرور الجديدة (8 أحرف على الأقل)",ac:"new-password"},{label:"أعد كلمة المرور الجديدة",ac:"new-password"}],"حفظ",false,function(v,done){
+  if(v[1].length<8)return done("كلمة المرور 8 أحرف على الأقل");if(v[1]!==v[2])return done("كلمتا المرور غير متطابقتين");
+  authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور الحالية غير صحيحة");var salt=crypto.getRandomValues(new Uint8Array(16));return pwHash(v[1],salt,210000).then(function(h){var l=AU.users();l.forEach(function(x){if(x.id===u.id){x.salt=b64(salt);x.hash=h;x.it=210000}});AU.save(l);done();toast("تغيّرت كلمة المرور")})}).catch(function(){done("تعذّر الحفظ")})})}
+function authDel(){var u=AU.me();if(!u)return;authAsk("حذف الحساب وكل بياناته",[{label:"اكتب كلمة المرور للتأكيد",ac:"current-password"}],"احذف نهائيًا",true,function(v,done){
+  authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور غير صحيحة");try{if(live)stop()}catch(e){}rawKeys().forEach(function(k){localStorage.removeItem(k)});
+    return idbPut("musaed",[]).then(function(){AU.save(AU.users().filter(function(x){return x.id!==u.id}));localStorage.removeItem("musaed.cur");location.reload()})}).catch(function(){done("تعذّر الحذف")})})}
+function authForgot(){var em=$("#auEmail").value.trim().toLowerCase(),u=AU.users().filter(function(x){return x.email===em})[0];
+  if(!u)return authErr("اكتب بريد الحساب أولاً، ثم اضغط «نسيت كلمة المرور؟»");
+  authAsk("ما أقدر أرجّع كلمة المرور",[{label:"الحساب محفوظ على هذا الجهاز فقط، فما فيه استرجاع. لحذفه مع كل بياناته والبدء من جديد اكتب بريده:",type:"email",ac:"off"}],"احذف الحساب",true,function(v,done){
+    if(v[0].trim().toLowerCase()!==u.email)return done("البريد غير مطابق");Object.keys(localStorage).forEach(function(k){if(k.indexOf("musaed@"+u.id+".")===0)localStorage.removeItem(k)});
+    idbDrop("musaed@"+u.id).then(function(){AU.save(AU.users().filter(function(x){return x.id!==u.id}));done();authSet(AU.users().length?"in":"up");authErr("انحذف الحساب. تقدر تنشئ حساب جديد.",true)})})}
+/* permissions */
+var PERMS=[["microphone","الميكروفون","mic"],["geolocation","الموقع","loc"],["notifications","التنبيهات","ntf"]];
+function permState(n){return new Promise(function(res){if(n==="notifications"&&"Notification" in window)return res(Notification.permission==="default"?"prompt":Notification.permission);
+  try{navigator.permissions.query({name:n}).then(function(r){res(r.state)},function(){res("unknown")})}catch(e){res("unknown")}})}
+function permAsk(n){if(n==="microphone"){try{navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){st.getTracks().forEach(function(t){t.stop()});permRender()},function(){toast("الميكروفون مرفوض. اسمح به من إعدادات المتصفح");permRender()})}catch(e){}}
+  else if(n==="geolocation"){try{navigator.geolocation.getCurrentPosition(function(){permRender()},function(){toast("الموقع مرفوض. اسمح به من إعدادات المتصفح");permRender()})}catch(e){}}
+  else{try{Notification.requestPermission().then(permRender)}catch(e){}}}
+function permRender(){var g=$("#permG");if(!g)return;g.textContent="";PERMS.forEach(function(p){var b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";var a=document.createElement("span");a.textContent=p[1];var st=document.createElement("span");st.style.fontWeight="600";st.textContent="…";b.appendChild(a);b.appendChild(st);g.appendChild(b);
+  permState(p[0]).then(function(v){st.textContent=v==="granted"?"مسموح":v==="denied"?"مرفوض":v==="prompt"?"اضغط للسماح":"غير متاح";st.style.color=v==="granted"?"#30D158":v==="denied"?"#FF6961":"#64D2FF";b.onclick=function(){if(v==="granted")toast(p[1]+": مسموح");else permAsk(p[0])}})})}
+function acRender(){var u=AU.me();if(!u)return;$("#acName").textContent=u.name||"حسابي";$("#acEmail").textContent=u.email}
+$("#authBox").addEventListener("submit",authSubmit);$("#authTabIn").onclick=function(){authSet("in")};$("#authTabUp").onclick=function(){authSet("up")};$("#authForgot").onclick=authForgot;
+$("#auEye").onclick=function(){var i=$("#auPass"),sh=i.type==="password";i.type=sh?"text":"password";$("#auPass2").type=i.type;this.setAttribute("aria-label",sh?"إخفاء كلمة المرور":"إظهار كلمة المرور")};
+$("#acOut").onclick=authOut;$("#acPass").onclick=authPass;$("#acDel").onclick=authDel;
+if(!AU.me()){authShow()}else{acRender()}
+
+swInit();if(AU.me())qsBoot();lrStart();document.body.classList.toggle("driving",drvOn());document.body.classList.toggle("big",get("musaed.big")==="1");livePill();setTimeout(momTick,6000);setInterval(momTick,60000);
 document.addEventListener("visibilitychange",function(){if(!document.hidden){lrStart();momTick()}});
 window.__mz2=function(){return {MT:!!MT,lrWatch:lrWatch!=null,drv:drvOn(),qm:qmWeek()}};
 window.__t={openCard:function(w){openCard(w)},closeCard:function(){closeCard()},momTick:function(){momTick()}};
