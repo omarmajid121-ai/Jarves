@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 
 final class Util {
     static volatile boolean foreground = false;
+    static volatile long assistAt = 0;
     static final String PREFS = "musaed";
     static final String CH_CALLS = "calls";
     static final String CH_MONEY = "money";

@@ -41,16 +41,30 @@ jobs:
 
       - name: Signing key
         env:
-          KS_B64: ${{ secrets.MUSAED_KEYSTORE_B64 }}
+          PASS: ${{ secrets.MUSAED_KS_PASS }}
         run: |
-          if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/musaed.jks"
-            echo "MUSAED_KEYSTORE=$RUNNER_TEMP/musaed.jks" >> "$GITHUB_ENV"
-            echo "SIGNED=fixed" >> "$GITHUB_ENV"
-          else
+          ENC=signing/musaed.jks.enc
+          if [ -z "$PASS" ]; then
             echo "SIGNED=temporary" >> "$GITHUB_ENV"
-            echo "::warning::No fixed signing key; this build cannot update an installed copy."
+            echo "::warning::MUSAED_KS_PASS is not set; this build cannot update an installed copy."
+            exit 0
           fi
+          mkdir -p signing
+          if [ -f "$ENC" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -in "$ENC" -out "$RUNNER_TEMP/musaed.jks" -pass env:PASS
+          else
+            keytool -genkeypair -keystore "$RUNNER_TEMP/musaed.jks" -storetype PKCS12 -alias musaed -keyalg RSA -keysize 4096 \
+              -validity 36500 -storepass "$PASS" -keypass "$PASS" -dname "CN=Musaed, O=Musaed, C=SA"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 300000 -salt -in "$RUNNER_TEMP/musaed.jks" -out "$ENC" -pass env:PASS
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$ENC"
+            git commit -m "Android: encrypted signing key [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+          echo "MUSAED_KEYSTORE=$RUNNER_TEMP/musaed.jks" >> "$GITHUB_ENV"
+          echo "SIGNED=fixed" >> "$GITHUB_ENV"
 
       - name: Build
         env:
@@ -59,13 +73,16 @@ jobs:
         working-directory: android-app/android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease bundleRelease
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/musaed.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/musaed.aab"
 
       - uses: actions/upload-artifact@v4
         with:
           name: musaed-apk
-          path: ${{ runner.temp }}/musaed.apk
+          path: |
+            ${{ runner.temp }}/musaed.apk
+            ${{ runner.temp }}/musaed.aab
 
       - name: Publish download
         if: env.SIGNED == 'fixed'
@@ -73,5 +90,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view android-latest >/dev/null 2>&1 || gh release create android-latest --title "مساعد · تطبيق أندرويد" --notes "أحدث نسخة من تطبيق مساعد لأندرويد." --latest=false
-          gh release upload android-latest "$RUNNER_TEMP/musaed.apk" --clobber
+          gh release upload android-latest "$RUNNER_TEMP/musaed.apk" "$RUNNER_TEMP/musaed.aab" --clobber
           gh release edit android-latest --notes "أحدث نسخة من تطبيق مساعد لأندرويد · بناء ${{ github.run_number }}"

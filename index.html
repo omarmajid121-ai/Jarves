@@ -618,7 +618,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.10",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.11",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -2536,7 +2536,7 @@ function authForgot(){var em=$("#auEmail").value.trim().toLowerCase(),u=AU.users
 /* ================= Android app: phone access (SMS, calls, contacts, notifications) ================= */
 function natOn(){try{return !!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins&&Capacitor.Plugins.Musaed)}catch(e){return false}}
 function natRun(m,a){try{return Promise.resolve(Capacitor.Plugins.Musaed[m](a||{}))}catch(e){return Promise.reject(e)}}
-var NAT={info:null,perms:{},call:{state:"idle"},pend:null,alT:0},NPERMS=[["mic","الميكروفون"],["loc","الموقع"],["camera","الكاميرا"],["notify","التنبيهات"],["sms","الرسائل النصية"],["calls","سجل المكالمات والمتصل"],["contacts","جهات الاتصال"],["dial","الاتصال المباشر"],["listener","إشعارات التطبيقات الأخرى"],["battery","العمل في الخلفية"],["exact","التذكير في وقته بالدقيقة"]];
+var NAT={info:null,perms:{},call:{state:"idle"},pend:null,alT:0},NPERMS=[["mic","الميكروفون"],["loc","الموقع"],["camera","الكاميرا"],["notify","التنبيهات"],["sms","الرسائل النصية"],["calls","سجل المكالمات والمتصل"],["contacts","جهات الاتصال"],["dial","الاتصال المباشر"],["listener","إشعارات التطبيقات الأخرى"],["battery","العمل في الخلفية"],["exact","التذكير في وقته بالدقيقة"],["assistant","المساعد الافتراضي للجوال"]];
 var NPTXT={sms:"Messages",calls:"Call log",contacts:"Contacts",dial:"Phone calls",listener:"Notification access",notify:"Notifications"};
 function natNo(e,which){var c=e&&e.code||"";if(c==="no_permission")return {error:"permission_off",permission:which,tell_user:"The «"+(NPERMS.filter(function(p){return p[0]===which})[0]||["",which])[1]+"» switch is off in Settings › الصلاحيات. Tell him in one sentence and offer to open it with open_permission."};
   return {error:"phone_read_failed",tell_user:"Reading from the phone did not work this time. Say so in one sentence and offer to try again."}}
@@ -2596,7 +2596,7 @@ function natDecl(){if(!natOn())return [];return [
     parameters:{type:"OBJECT",properties:{name:{type:"STRING"},number:{type:"STRING",description:"Digits only; get it from contacts_find first"}},required:["number"]}},
   {name:"phone_call_confirm",description:"Place the call that phone_call prepared. Only right after he clearly said yes to that call."},
   {name:"open_permission",description:"Open the Android screen that turns on one phone permission he asked for, or one a tool said is off.",
-    parameters:{type:"OBJECT",properties:{name:{type:"STRING",enum:["sms","calls","contacts","dial","notify","listener","battery","exact","mic","loc","camera"]}},required:["name"]}}]}
+    parameters:{type:"OBJECT",properties:{name:{type:"STRING",enum:["sms","calls","contacts","dial","notify","listener","battery","exact","mic","loc","camera","assistant"]}},required:["name"]}}]}
 function natPrompt(){if(!natOn())return "";return "\n\n## Android phone\nYou run inside his Android app. You can read his SMS (phone_messages), log purchases from bank messages (bank_expenses), read his call log and say when he last spoke with someone (call_history), read notifications other apps showed (phone_notifications), find people in his phone contacts (contacts_find), and get a call ready (phone_call, then phone_call_confirm only after he says yes). Never read verification codes or passwords aloud. Read only what he asked for and summarise long messages. If a tool says a permission is off, tell him which switch in one sentence and offer to open it (open_permission)."}
 TOOLS.phone_messages=function(a,cb){a=a||{};var n=Math.min(30,Math.max(1,+a.limit||8));natRun("sms",{since:natSince(a.days||7,365),limit:n,query:cS(a.query,60)}).then(function(r){
   var l=cArr(r&&r.items).map(function(s){return {from:s.name||s.from,number:s.name?s.from:"",when:natAgo(s.t),text:natMask(s.text).slice(0,500)}});
@@ -2643,11 +2643,13 @@ function natAlertRender(){var g=$("#natG");if(!g)return;var pr=(NAT.info&&NAT.in
   var a=document.createElement("span");a.textContent=r[1];var s=document.createElement("span");s.style.fontWeight="600";s.textContent=on?"يعمل":"متوقف";s.style.color=on?"#30D158":"rgba(255,255,255,.55)";b.appendChild(a);b.appendChild(s);
   b.onclick=function(){if(r[2]==="native"){var o={};o[r[0]]=!on;natRun("setPrefs",o).then(function(){pr[r[0]]=!on;if(NAT.info)NAT.info.prefs=pr;natAlertRender();toast(r[1]+": "+(!on?"يعمل":"متوقف"))},function(){toast("تعذّر الحفظ")})}
     else{set(r[2],on?"0":"1");natAlertRender();if(r[0]==="rem")natAlarms();toast(r[1]+": "+(!on?"يعمل":"متوقف"))}};g.appendChild(b)})}
+function natAssist(){try{if(!AU.me()||document.body.classList.contains("locked"))return;closeCard();if(!live&&get(K.key)){userEnded=false;start()}}catch(e){}}
 function natDiag(){if(!natOn()||!NAT.info)return "";return "\nتطبيق أندرويد: "+NAT.info.version+" · "+(NAT.info.model||"")}
 function natInit(){if(!natOn())return;document.body.classList.add("native");
   ["#natH","#natG","#natF"].forEach(function(s){var e=$(s);if(e)e.hidden=false});var f=$("#permF");if(f)f.textContent="إذا كانت الصلاحية مرفوضة، اضغط عليها وتنفتح لك إعدادات أندرويد. بيانات الهاتف (الرسائل والمكالمات والإشعارات) تبقى على جهازك.";
   natRun("info").then(function(i){NAT.info=i||null;natAlertRender()},function(){});
-  try{var P=Capacitor.Plugins.Musaed;P.addListener("call",natCallEv);P.addListener("sms",natSmsEv)}catch(e){}
+  try{var P=Capacitor.Plugins.Musaed;P.addListener("call",natCallEv);P.addListener("sms",natSmsEv);P.addListener("assist",natAssist)}catch(e){}
+  natRun("launch").then(function(r){if(r&&r.assist)natAssist()},function(){});
   natAlarms();document.addEventListener("visibilitychange",function(){if(!document.hidden){natAlarmSoon();if(NAT.perms&&$("#card").classList.contains("open"))natPermRender()}})}
 /* permissions */
 var PERMS=[["microphone","الميكروفون","mic"],["geolocation","الموقع","loc"],["notifications","التنبيهات","ntf"]];

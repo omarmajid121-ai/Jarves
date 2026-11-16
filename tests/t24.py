@@ -16,7 +16,7 @@ SMS=[
  {"id":8,"from":"Riyad Bank","name":"","text":"شراء مدى ٧٥٫٥٠ ريال لدى العثيم","t":NOW-70*3600e3},
  {"id":9,"from":"+966501112233","name":"أحمد","text":"وصلت؟ أنا عند الباب","t":NOW-600e3}]
 MOCK="""
-window.__nat={calls:[],ln:[],lnCancel:[],sms:%s,listeners:{},perms:{mic:'granted',loc:'granted',camera:'prompt',notify:'granted',sms:'granted',calls:'granted',contacts:'granted',dial:'prompt',listener:'off',battery:'off',exact:'granted'},prefs:{missed:true,bank:true,notes:true}};
+window.__nat={calls:[],ln:[],lnCancel:[],sms:%s,listeners:{},perms:{mic:'granted',loc:'granted',camera:'prompt',notify:'granted',sms:'granted',calls:'granted',contacts:'granted',dial:'prompt',listener:'off',battery:'off',exact:'granted',assistant:'off'},prefs:{missed:true,bank:true,notes:true}};
 (function(){var N=window.__nat;function rec(m,a){N.calls.push([m,a||{}])}
  var P={info:function(a){rec('info',a);return Promise.resolve({version:'1.0.7',build:7,sdk:34,model:'samsung SM-S928B',perms:N.perms,prefs:N.prefs})},
   state:function(a){rec('state',a);return Promise.resolve(N.perms)},
@@ -62,7 +62,7 @@ async def go():
         await pg.evaluate("__t.openCard('set')");await pg.wait_for_timeout(900)
         rows=await pg.evaluate("[...document.querySelectorAll('#permG button')].map(b=>b.innerText.replace(/\\n/g,' : '))")
         print(" permissions rows:",len(rows));[print("   ",r) for r in rows]
-        if len(rows)!=12: F("HIGH","settings","native permission list wrong size")
+        if len(rows)!=13: F("HIGH","settings","native permission list wrong size")
         await pg.evaluate("[...document.querySelectorAll('#permG button')].find(b=>b.innerText.indexOf('الكاميرا')>-1).click()");await pg.wait_for_timeout(1200)
         cam=await pg.evaluate("[...document.querySelectorAll('#permG button')].find(b=>b.innerText.indexOf('الكاميرا')>-1).innerText")
         print(" tap camera -> asks Android, row now:",cam.replace("\n"," : "))

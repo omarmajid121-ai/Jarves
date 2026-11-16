@@ -2,6 +2,7 @@ package sa.musaed.app;
 
 import android.Manifest;
 import android.app.AlarmManager;
+import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -105,6 +106,25 @@ public class MusaedPlugin extends Plugin {
         return am != null && am.canScheduleExactAlarms();
     }
 
+    private boolean assistantOn() {
+        if (Build.VERSION.SDK_INT < 29) return false;
+        try {
+            RoleManager rm = getContext().getSystemService(RoleManager.class);
+            return rm != null && rm.isRoleHeld(RoleManager.ROLE_ASSISTANT);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @PluginMethod
+    public void launch(PluginCall call) {
+        JSObject o = new JSObject();
+        long at = Util.assistAt;
+        o.put("assist", at > 0 && System.currentTimeMillis() - at < 20000);
+        Util.assistAt = 0;
+        call.resolve(o);
+    }
+
     private JSObject states() {
         JSObject o = new JSObject();
         for (String a : RUNTIME) o.put(a, ps(a));
@@ -112,6 +132,7 @@ public class MusaedPlugin extends Plugin {
         o.put("listener", listenerOn() ? "granted" : "off");
         o.put("battery", batteryFree() ? "granted" : "off");
         o.put("exact", exactOk() ? "granted" : "off");
+        o.put("assistant", assistantOn() ? "granted" : "off");
         return o;
     }
 
@@ -179,6 +200,15 @@ public class MusaedPlugin extends Plugin {
                     r.put("state", "settings");
                 } else {
                     r.put("state", "granted");
+                }
+                call.resolve(r);
+                return;
+            case "assistant":
+                if (assistantOn()) {
+                    r.put("state", "granted");
+                } else {
+                    open(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+                    r.put("state", "settings");
                 }
                 call.resolve(r);
                 return;
