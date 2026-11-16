@@ -54,7 +54,7 @@ async def go():
         await pg.goto(URL);await pg.evaluate("localStorage.clear()");await pg.reload();await pg.wait_for_timeout(800)
         await signup(pg,"عمر","omar@test.com","pass-omar-1")
         print(" native detected:",await pg.evaluate("__nt.on()"),"| body.native:",await pg.evaluate("document.body.classList.contains('native')"))
-        su=await pg.evaluate("(()=>{var s=__nt.setup();return {names:s.tools[s.tools.length-1].functionDeclarations?s.tools[s.tools.length-1].functionDeclarations.map(f=>f.name):s.tools.map(t=>Object.keys(t)),txt:s.systemInstruction.parts[0].text.indexOf('## Android phone')>-1}})()")
+        su=await pg.evaluate("(()=>{var s=__nt.setup();return {names:s.tools[s.tools.length-1].functionDeclarations?s.tools[s.tools.length-1].functionDeclarations.map(f=>f.name):s.tools.map(t=>Object.keys(t)),txt:s.systemInstruction.parts[0].text.indexOf('## جوال أندرويد')>-1||s.systemInstruction.parts[0].text.indexOf('## Android phone')>-1}})()")
         nn=[n for n in ["phone_messages","bank_expenses","call_history","phone_notifications","phone_call","phone_call_confirm","open_permission"] if n in su["names"]]
         print(" model gets the phone tools:",len(nn),"of 7 | phone rules in prompt:",su["txt"],"| total tools:",len(su["names"]))
         if len(nn)<7 or not su["txt"]: F("HIGH","tools","phone tools missing from the session")
@@ -139,7 +139,7 @@ async def go():
         c=await b.new_context(viewport={"width":390,"height":844});pg=await c.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)[:200]))
         for u in ["**/*googleapis.com/**","**/api.open-meteo.com/**","**/api.aladhan.com/**","**/api.bigdatacloud.net/**"]: await c.route(u,lambda r:r.fulfill(json={}))
         await pg.goto(URL);await pg.evaluate("localStorage.clear()");await pg.reload();await pg.wait_for_timeout(800);await signup(pg,"عمر","omar@test.com","pass-omar-1")
-        su=await pg.evaluate("(()=>{var s=__nt.setup(),t=s.tools.filter(t=>t.functionDeclarations)[0];return {n:t.functionDeclarations.length,ph:t.functionDeclarations.some(f=>f.name==='phone_messages'),txt:s.systemInstruction.parts[0].text.indexOf('## Android phone')>-1}})()")
+        su=await pg.evaluate("(()=>{var s=__nt.setup(),t=s.tools.filter(t=>t.functionDeclarations)[0];return {n:t.functionDeclarations.length,ph:t.functionDeclarations.some(f=>f.name==='phone_messages'),txt:s.systemInstruction.parts[0].text.indexOf('## جوال أندرويد')>-1||s.systemInstruction.parts[0].text.indexOf('## Android phone')>-1}})()")
         await pg.evaluate("__t.openCard('set')");await pg.wait_for_timeout(700);rows=await pg.evaluate("document.querySelectorAll('#permG button').length");hid=await pg.evaluate("document.querySelector('#natG').hidden")
         print(" browser: phone tools offered:",su["ph"],"| prompt section:",su["txt"],"| tools:",su["n"],"| permission rows:",rows,"| alert group hidden:",hid,"| errors:",errs)
         if su["ph"] or su["txt"] or rows!=3 or not hid or errs: F("HIGH","web","browser version changed")
