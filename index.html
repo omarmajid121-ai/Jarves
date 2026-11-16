@@ -535,7 +535,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
     <div class="pane settings" id="paneSet">
       <p class="ghdr">الحساب</p>
       <div class="group"><div class="cell" style="flex-direction:column;align-items:flex-start;gap:2px"><b id="acName" style="font-size:17px"></b><span id="acEmail" dir="ltr" style="font-size:14px;color:rgba(255,255,255,.66)"></span></div>
-        <button class="cell plain" id="acPass" type="button">تغيير كلمة المرور</button><button class="cell plain" id="acOut" type="button">تسجيل الخروج</button><button class="cell plain danger" id="acDel" type="button">حذف حسابي وكل بياناته</button></div>
+        <button class="cell plain" id="acPass" type="button">تغيير كلمة المرور</button><button class="cell plain" id="acRc" type="button">رمز استرجاع جديد</button><button class="cell plain" id="acLock" type="button">قفل التطبيق عند الفتح: متوقف</button><button class="cell plain" id="acOut" type="button">تسجيل الخروج</button><button class="cell plain danger" id="acDel" type="button">حذف حسابي وكل بياناته</button></div>
       <p class="gftr">كل حساب على هذا الجهاز له بياناته وذاكرته الخاصة، ولا يشوف أحد بيانات الثاني.</p>
       <p class="ghdr" style="margin-top:0">الصلاحيات</p>
       <div class="group" id="permG"></div>
@@ -615,14 +615,15 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.8",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.9",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
 function fetchT(u,o,ms){o=o||{};if(!_fetch)return Promise.reject(new Error("net"));if(o.signal||!window.AbortController)return _fetch(u,o);var slow=false;try{slow=!!acBase()&&String(u).indexOf(acBase())===0}catch(e){}
   var ac=new AbortController(),t=setTimeout(function(){ac.abort()},ms||(slow?70000:/open-meteo|aladhan|bigdatacloud/.test(String(u))?5000:8000));o.signal=ac.signal;return _fetch(u,o).then(function(r){clearTimeout(t);return r},function(e){clearTimeout(t);throw e})}
 function get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
-function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+var AUTH_LOCKING=false,STORE_FULL=0;
+function set(k,v){if(AUTH_LOCKING)return;try{localStorage.setItem(k,v)}catch(e){STORE_FULL=Date.now();if(!set.warned){set.warned=1;setTimeout(function(){try{toast("ذاكرة الجهاز ممتلئة، بعض البيانات ما انحفظت")}catch(x){}},0)}}}
 
 var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null,anIn=null,anOut=null,outBus=null;
 var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={my_places:13000,place_reminder:14000,web_search:17000,read_page:24000,assistant_call:75000,confirm_call:75000,show_route:11000};
@@ -640,11 +641,11 @@ function fit(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.
 window.addEventListener("resize",fit);fit();
 function rgba(c,a){return "rgba("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+","+a+")"}
 function arc(r,a0,a1,w,col){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(0,0,r,a0,a1);g.stroke()}
-/* hologram: a rotating 3D wireframe globe inside three gyroscope rings, with a scan band; back halves behind the core, front halves over it */
+/* hologram: a rotating 3D wireframe globe with a scan band; back halves behind the core, front halves over it */
 function p3(x,y,z,yaw,pitch,D){var c=Math.cos(yaw),s=Math.sin(yaw),x1=x*c+z*s,z1=-x*s+z*c,cp=Math.cos(pitch),sp=Math.sin(pitch),y2=y*cp-z1*sp,z2=y*sp+z1*cp,f=D/(D-z2);return [x1*f,y2*f,z2]}
-var GYRO=[{a:.35,b:0,s:.42,w:.9},{a:1.2,b:1.9,s:-.3,w:1.05},{a:2.2,b:3.6,s:.23,w:1.18}];
+
 function holo(t,R,front){var sp=mode==="think"?2.4:mode==="speak"?1.25+amp*1.6:mode==="connect"?1.8:mode==="listen"?1+amp*.8:.55,T=still?0:t,
-  Rs=R*1.62,D=R*7,yaw=T*.32*sp,pitch=-.38,PI=Math.PI,B=[],G=[],nodes=[],k,i,m,pts,prev,cur;
+  Rs=R*1.62,D=R*7,yaw=T*.32*sp,pitch=-.38,PI=Math.PI,B=[],G=[],k,i,m,pts,prev,cur;
   for(k=0;k<4;k++){B.push(new Path2D());G.push(new Path2D())}
   var seg=function(bk,a,b,lo,hi){var z=(a[2]+b[2])/2;if((z>=0)!==!!front)return;var d=Math.max(0,Math.min(1,(z/Rs+1)/2)),al=front?lo+(hi-lo)*d:lo*.45+(hi*.4-lo*.45)*d,q=Math.max(0,Math.min(3,Math.floor(al*4)));bk[q].moveTo(a[0],a[1]);bk[q].lineTo(b[0],b[1])};
   /* globe: meridians and parallels */
@@ -652,15 +653,9 @@ function holo(t,R,front){var sp=mode==="think"?2.4:mode==="speak"?1.25+amp*1.6:m
   [-1.05,-.52,0,.52,1.05].forEach(function(la){var r=Rs*Math.cos(la),y=Rs*Math.sin(la);prev=null;for(i=0;i<=40;i++){var ph=i/40*2*PI;cur=p3(r*Math.cos(ph),y,r*Math.sin(ph),yaw,pitch,D);if(prev)seg(B,prev,cur,.18,.5);prev=cur}});
   /* scan band */
   var sl=Math.asin(Math.sin(T*.9)*.94),sr=Rs*Math.cos(sl),sy=Rs*Math.sin(sl);prev=null;for(i=0;i<=48;i++){var ps=i/48*2*PI;cur=p3(sr*Math.cos(ps),sy,sr*Math.sin(ps),yaw,pitch,D);if(prev)seg(G,prev,cur,.55,1);prev=cur}
-  /* gyroscope rings (off) */
-  if(false)GYRO.forEach(function(o,n){var Rg=R*(1.9+n*.17),ra=o.a+T*o.s*sp,rb=o.b+T*o.s*.6;prev=null;
-    for(i=0;i<=56;i++){var th=i/56*2*PI,x=Rg*Math.cos(th),y=Rg*Math.sin(th),z=0,y1=y*Math.cos(ra)-z*Math.sin(ra),z1=y*Math.sin(ra)+z*Math.cos(ra),x2=x*Math.cos(rb)+z1*Math.sin(rb),z2=-x*Math.sin(rb)+z1*Math.cos(rb);
-      cur=p3(x2,y1,z2,0,pitch,D);if(prev)seg(G,prev,cur,.3,.95);prev=cur;if(i===n*9+4||i===n*9+32)nodes.push(cur)}});
   g.save();g.lineCap="round";if(front)g.globalCompositeOperation="lighter";
   for(k=0;k<4;k++){var al=(k+.5)/4;g.strokeStyle=rgba(c2,al);g.lineWidth=front?1.1:.8;g.stroke(B[k]);
     if(front){g.strokeStyle=rgba(c1,al*.16);g.lineWidth=7;g.stroke(G[k])}g.strokeStyle=rgba(c1,al);g.lineWidth=front?2.2:1.3;g.stroke(G[k])}
-  nodes.forEach(function(q){if((q[2]>=0)!==!!front)return;var rr=R*.06,eg=g.createRadialGradient(q[0],q[1],0,q[0],q[1],rr*4);eg.addColorStop(0,rgba(c1,front?.9:.35));eg.addColorStop(1,rgba(c1,0));g.fillStyle=eg;g.beginPath();g.arc(q[0],q[1],rr*4,0,7);g.fill();
-    g.fillStyle="rgba(255,255,255,"+(front?.95:.4)+")";g.beginPath();g.arc(q[0],q[1],rr,0,7);g.fill()});
   g.restore()}
 function coreStyle(){var v=get("musaed.core");return v=="globe"||v=="rings"?v:"plasma"}
 function frame(now){
@@ -782,6 +777,7 @@ var CI={phone:["green",'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 
   prayer:["indigo",'<path d="M5 20v-7a7 7 0 0114 0v7M3 20h18M12 3v3"></path><path d="M10 20v-3a2 2 0 014 0v3"></path>'],
   chart:["green",'<path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L19 8"></path>'],
   car:["orange",'<path d="M5 16.5V12l2-5h10l2 5v4.5M5 16.5h14M5 16.5v2M19 16.5v2"></path><circle cx="8" cy="13.5" r="1"></circle><circle cx="16" cy="13.5" r="1"></circle>'],
+  lock:["blue",'<rect x="5" y="10.5" width="14" height="10" rx="2.5"></rect><path d="M8 10.5V8a4 4 0 018 0v2.5"></path>'],
   clock:["amber",'<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>'],
   news:["purple",'<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M7.5 9h9M7.5 12.5h9M7.5 16h5"></path>'],
   photo:["orange",'<rect x="3" y="5" width="18" height="14" rx="3"></rect><circle cx="8.5" cy="10" r="1.6"></circle><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"></path>'],
@@ -1090,7 +1086,7 @@ function handle(m){
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn&&!hushed){if(meMark<0){meMark=curMe?curMe.textContent.length:0;if(lastSpeechT&&Date.now()-lastSpeechT<20000)qmAdd("lat",Date.now()-lastSpeechT);lastSpeechT=0}sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
   if(sc.turnComplete){dropTurn=false;endTurn();infoWatch();if(delPend)delPend.armed=true;trySwap()}}
-function start(){if(document.body.classList.contains("locked")||!localStorage.getItem("musaed.cur"))return;
+function start(){if(document.body.classList.contains("locked")||!localStorage.getItem("musaed.cur")||AUTH_LOCKING)return;
   if(live)return;
   if(!get(K.key)){openCard("set");return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}
@@ -1714,7 +1710,7 @@ function docSet(a){set(K.docs,JSON.stringify(a))}
 function docFind(id){return docGet().filter(function(x){return x.id===id})[0]||null}
 function docDB(){return dbP||(dbP=new Promise(function(res,rej){try{var r=indexedDB.open("musaed",1);r.onupgradeneeded=function(){r.result.createObjectStore("files")};r.onsuccess=function(){res(r.result)};r.onerror=function(){dbP=null;rej(r.error)}}catch(e){dbP=null;rej(e)}}))}
 function dbDo(mode,fn){return docDB().then(function(db){return new Promise(function(res,rej){var t=db.transaction("files",mode),rq=fn(t.objectStore("files"));t.oncomplete=function(){res(rq&&rq.result)};t.onerror=t.onabort=function(){rej(t.error)}})})}
-function dbPut(k,v){return dbDo("readwrite",function(s){return s.put(v,k)}).catch(function(){memF[k]=v;return "mem"})}
+function dbPut(k,v){if(AUTH_LOCKING)return Promise.resolve("locked");return dbDo("readwrite",function(s){return s.put(v,k)}).catch(function(){memF[k]=v;return "mem"})}
 function dbGet(k){if(memF[k])return Promise.resolve(memF[k]);return dbDo("readonly",function(s){return s.get(k)}).catch(function(){return null})}
 function dbDel(k){delete memF[k];return dbDo("readwrite",function(s){return s.delete(k)}).catch(function(){})}
 function docFiles(d,fn){for(var i=0;i<(d.n||0);i++)fn(d.id+"/"+i);if(d.pdf)fn(d.id+"/pdf")}
@@ -2424,7 +2420,7 @@ $("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-s
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
-function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+="\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
+function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
   e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
@@ -2462,7 +2458,21 @@ function unstash(uid){var orphan=rawKeys();var pre="musaed@"+uid+".";
   var go=function(){vaultKeys(uid).forEach(function(k){localStorage.setItem("musaed."+k.slice(pre.length),localStorage.getItem(k))});
     return idbAll("musaed@"+uid).then(function(r){if(r.db)r.db.close();return idbPut("musaed",r.rows).then(function(ok){if(!ok)throw new Error("copy");vaultKeys(uid).forEach(function(k){localStorage.removeItem(k)});return idbDrop("musaed@"+uid)})})};
   return orphan.length?stash("orphan"+Date.now().toString(36)).then(go):go()}
-var auMode="in",auBusy=false,auFails=0,auWait=0;
+var auMode="in",auBusy=false,auFails=0,auWait=0,RC_PENDING=null;
+var RC_AB="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function rcNew(){var a=crypto.getRandomValues(new Uint8Array(12)),o="",i;for(i=0;i<12;i++){o+=RC_AB[a[i]%RC_AB.length];if(i===3||i===7)o+="-"}return o}
+function rcNorm(t){return String(t||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
+function rcMake(){var code=rcNew(),salt=crypto.getRandomValues(new Uint8Array(16));return pwHash(rcNorm(code),salt,120000).then(function(h){return {code:code,rec:{salt:b64(salt),hash:h,it:120000,t:Date.now()}}})}
+function rcShow(code,then){var box=document.createElement("div");box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.style.cssText="position:fixed;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.75)";
+  var c=document.createElement("div");c.style.cssText="width:100%;max-width:380px;border-radius:30px;padding:24px 18px 18px;background:rgba(44,44,50,.95);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);color:#fff;display:flex;flex-direction:column;gap:12px;text-align:center";
+  var h=document.createElement("div");h.style.cssText="font-size:20px;font-weight:700";h.textContent="رمز الاسترجاع";var p1=document.createElement("p");p1.style.cssText="margin:0;font-size:15px;line-height:22px;color:rgba(255,255,255,.75)";p1.textContent="احفظه في مكان آمن. إذا نسيت كلمة المرور، هذا الرمز الوحيد اللي يرجّع حسابك. ما راح يظهر مرة ثانية.";
+  var cd=document.createElement("div");cd.dir="ltr";cd.style.cssText="font:600 26px/1.3 ui-monospace,Menlo,monospace;letter-spacing:2px;padding:14px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);user-select:all;-webkit-user-select:all";cd.textContent=code;
+  var cp=document.createElement("button");cp.type="button";cp.textContent="نسخ الرمز";cp.style.cssText="height:48px;border-radius:24px;border:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:16px;font-weight:600";
+  cp.onclick=function(){try{navigator.clipboard.writeText(code).then(function(){cp.textContent="انسخ ✓"})}catch(e){}};
+  var lb=document.createElement("label");lb.style.cssText="display:flex;gap:10px;align-items:center;justify-content:center;font-size:15px;min-height:44px";var ck=document.createElement("input");ck.type="checkbox";ck.style.cssText="width:22px;height:22px";lb.appendChild(ck);lb.appendChild(document.createTextNode("حفظت الرمز"));
+  var ok=document.createElement("button");ok.type="button";ok.textContent="تم";ok.disabled=true;ok.style.cssText="height:52px;border-radius:26px;border:0;background:#fff;color:#000;font:inherit;font-size:17px;font-weight:700;opacity:.5";
+  ck.onchange=function(){ok.disabled=!ck.checked;ok.style.opacity=ck.checked?"1":".5"};ok.onclick=function(){box.remove();then&&then()};
+  [h,p1,cd,cp,lb,ok].forEach(function(x){c.appendChild(x)});box.appendChild(c);document.body.appendChild(box)}
 function authErr(t,ok){var e=$("#authErr");e.textContent=t||"";e.className=ok?"ok":""}
 function authSet(m){auMode=m;var up=m==="up",first=!AU.users().length;$("#authTabIn").setAttribute("aria-selected",String(!up));$("#authTabUp").setAttribute("aria-selected",String(up));
   $("#afName").hidden=!up;$("#afPass2").hidden=!up;$("#authGo").textContent=up?"إنشاء الحساب":"دخول";$("#authSub").textContent=up?(first?"أنشئ حسابك لتبدأ":"حساب جديد على هذا الجهاز"):"سجّل دخولك";
@@ -2474,17 +2484,22 @@ function authSubmit(ev){if(ev)ev.preventDefault();if(auBusy)return;var em=$("#au
   if(up){var nm=$("#auName").value.trim();if(!nm)return authErr("اكتب اسمك");if(pw.length<8)return authErr("كلمة المرور 8 أحرف على الأقل");if(pw!==$("#auPass2").value)return authErr("كلمتا المرور غير متطابقتين");
     if(AU.users().some(function(u){return u.email===em}))return authErr("هذا البريد له حساب على هذا الجهاز. اختر «دخول».");
     auBusy=true;$("#authGo").disabled=true;authErr("أنشئ الحساب…",true);var salt=crypto.getRandomValues(new Uint8Array(16)),it=210000,first=!AU.users().length;
-    return pwHash(pw,salt,it).then(function(h){var u={id:"u"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36),email:em,name:nm,salt:b64(salt),hash:h,it:it,t:Date.now()};
-      var done=function(){var l=AU.users();l.push(u);AU.save(l);localStorage.setItem("musaed.cur",u.id);localStorage.setItem("musaed.name",nm);location.reload()};
-      if(first)return done();return (rawKeys().length?stash("orphan"+Date.now().toString(36)):Promise.resolve()).then(done)})
+    var RCx=null;return rcMake().then(function(r){RCx=r;RC_PENDING=r.rec;return pwHash(pw,salt,it)}).then(function(h){var u={id:"u"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36),email:em,name:nm,salt:b64(salt),hash:h,it:it,t:Date.now(),rc:RCx.rec};
+      var done=function(){var l=AU.users();l.push(u);AU.save(l);localStorage.setItem("musaed.cur",u.id);localStorage.setItem("musaed.name",nm);rcShow(RCx.code,function(){location.reload()})};
+      if(first)return done();rawKeys().forEach(function(k){localStorage.removeItem(k)});return idbPut("musaed",[]).then(function(){return done()})})
     .catch(function(){auBusy=false;$("#authGo").disabled=false;authErr("تعذّر إنشاء الحساب. حاول مرة ثانية.")})}
   if(Date.now()<auWait)return authErr("محاولات كثيرة. انتظر "+Math.ceil((auWait-Date.now())/1000)+" ثانية.");
   var u=AU.users().filter(function(x){return x.email===em})[0];auBusy=true;$("#authGo").disabled=true;authErr("");
   (u?pwHash(pw,unb64(u.salt),u.it||210000):Promise.resolve("x")).then(function(h){
     if(!u||h!==u.hash){auBusy=false;$("#authGo").disabled=false;auFails++;if(auFails>=5){auWait=Date.now()+Math.min(300000,30000*Math.pow(2,auFails-5))}return authErr("البريد أو كلمة المرور غير صحيحة")}
-    authErr("أفتح حسابك…",true);return unstash(u.id).then(function(){localStorage.setItem("musaed.cur",u.id);location.reload()})})
+    authErr("أفتح حسابك…",true);localStorage.setItem("musaed.lockAt",String(Date.now()));return unstash(u.id).then(function(){localStorage.setItem("musaed.cur",u.id);location.reload()})})
   .catch(function(){auBusy=false;$("#authGo").disabled=false;authErr("تعذّر فتح الحساب. حاول مرة ثانية.")})}
-function authOut(){try{if(live)stop()}catch(e){}var c=AU.cur();if(!c)return;toast("أقفل حسابك…");stash(c).then(function(){localStorage.removeItem("musaed.cur");location.reload()}).catch(function(){toast("تعذّر تسجيل الخروج، حاول مرة ثانية")})}
+function authFlush(){try{if(MT)mtAbort()}catch(e){}try{if(live)stop()}catch(e){}try{clearTimeout(QMT);if(qmMem)localStorage.setItem(K.qm,JSON.stringify(qmMem))}catch(e){}
+  var h=Promise.resolve();try{clearTimeout(hT);if(hDay&&hBuf)h=dbPut("hist/"+hDay,hBuf)}catch(e){}return h.then(function(){return new Promise(function(r){setTimeout(r,150)})})}
+function authOut(){var c=AU.cur();if(!c)return;toast("أقفل حسابك…");localStorage.setItem("musaed.lockAt",String(Date.now()));
+  authFlush().then(function(){AUTH_LOCKING=true;return stash(c)}).then(function(){localStorage.removeItem("musaed.cur");location.reload()}).catch(function(){AUTH_LOCKING=false;toast("تعذّر تسجيل الخروج، حاول مرة ثانية")})}
+window.addEventListener("storage",function(e){if(!e.key)return;if(e.key==="musaed.lockAt"||e.key==="musaed.cur"){if(e.key==="musaed.cur"&&e.newValue&&e.newValue===AU.cur()&&!document.body.classList.contains("locked"))return;
+  AUTH_LOCKING=true;try{if(live)stop()}catch(x){}document.body.classList.add("locked");setTimeout(function(){location.reload()},e.key==="musaed.cur"?50:1500)}});
 function authAsk(title,fields,btn,danger,fn){var box=document.createElement("div");box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.style.cssText="position:fixed;inset:0;z-index:210;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.6)";
   box.innerHTML='<form style="width:100%;max-width:380px" id="authAskF"></form>';var f=box.firstChild;f.className="";f.id="authAskF";f.setAttribute("novalidate","");
   var card=document.createElement("div");card.style.cssText="position:relative;border-radius:30px;padding:22px 18px 18px;background:rgba(44,44,50,.92);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);color:#fff;display:flex;flex-direction:column;gap:12px";
@@ -2499,14 +2514,20 @@ function authCheck(u,pw){return pwHash(pw,unb64(u.salt),u.it||210000).then(funct
 function authPass(){var u=AU.me();if(!u)return;authAsk("تغيير كلمة المرور",[{label:"كلمة المرور الحالية",ac:"current-password"},{label:"كلمة المرور الجديدة (8 أحرف على الأقل)",ac:"new-password"},{label:"أعد كلمة المرور الجديدة",ac:"new-password"}],"حفظ",false,function(v,done){
   if(v[1].length<8)return done("كلمة المرور 8 أحرف على الأقل");if(v[1]!==v[2])return done("كلمتا المرور غير متطابقتين");
   authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور الحالية غير صحيحة");var salt=crypto.getRandomValues(new Uint8Array(16));return pwHash(v[1],salt,210000).then(function(h){var l=AU.users();l.forEach(function(x){if(x.id===u.id){x.salt=b64(salt);x.hash=h;x.it=210000}});AU.save(l);done();toast("تغيّرت كلمة المرور")})}).catch(function(){done("تعذّر الحفظ")})})}
+function authRc(){var u=AU.me();if(!u)return;authAsk("رمز استرجاع جديد",[{label:"اكتب كلمة المرور",ac:"current-password"}],"أنشئ الرمز",false,function(v,done){
+  authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور غير صحيحة");return rcMake().then(function(r){var l=AU.users();l.forEach(function(x){if(x.id===u.id)x.rc=r.rec});AU.save(l);done();rcShow(r.code)})}).catch(function(){done("تعذّر الإنشاء")})})}
 function authDel(){var u=AU.me();if(!u)return;authAsk("حذف الحساب وكل بياناته",[{label:"اكتب كلمة المرور للتأكيد",ac:"current-password"}],"احذف نهائيًا",true,function(v,done){
   authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور غير صحيحة");try{if(live)stop()}catch(e){}rawKeys().forEach(function(k){localStorage.removeItem(k)});
     return idbPut("musaed",[]).then(function(){AU.save(AU.users().filter(function(x){return x.id!==u.id}));localStorage.removeItem("musaed.cur");location.reload()})}).catch(function(){done("تعذّر الحذف")})})}
 function authForgot(){var em=$("#auEmail").value.trim().toLowerCase(),u=AU.users().filter(function(x){return x.email===em})[0];
   if(!u)return authErr("اكتب بريد الحساب أولاً، ثم اضغط «نسيت كلمة المرور؟»");
-  authAsk("ما أقدر أرجّع كلمة المرور",[{label:"الحساب محفوظ على هذا الجهاز فقط، فما فيه استرجاع. لحذفه مع كل بياناته والبدء من جديد اكتب بريده:",type:"email",ac:"off"}],"احذف الحساب",true,function(v,done){
-    if(v[0].trim().toLowerCase()!==u.email)return done("البريد غير مطابق");Object.keys(localStorage).forEach(function(k){if(k.indexOf("musaed@"+u.id+".")===0)localStorage.removeItem(k)});
-    idbDrop("musaed@"+u.id).then(function(){AU.save(AU.users().filter(function(x){return x.id!==u.id}));done();authSet(AU.users().length?"in":"up");authErr("انحذف الحساب. تقدر تنشئ حساب جديد.",true)})})}
+  if(!u.rc||!u.rc.hash)return authErr("هذا الحساب ما له رمز استرجاع، فما نقدر نرجّعه. صاحب الحساب يقدر ينشئ رمز من الإعدادات بعد ما يدخل.");
+  authAsk("استرجاع الحساب",[{label:"رمز الاسترجاع",type:"text",ac:"off"},{label:"كلمة مرور جديدة (8 أحرف على الأقل)",ac:"new-password"},{label:"أعد كلمة المرور الجديدة",ac:"new-password"}],"احفظ وادخل",false,function(v,done){
+    if(Date.now()<auWait)return done("محاولات كثيرة. انتظر "+Math.ceil((auWait-Date.now())/1000)+" ثانية.");
+    if(v[1].length<8)return done("كلمة المرور 8 أحرف على الأقل");if(v[1]!==v[2])return done("كلمتا المرور غير متطابقتين");
+    pwHash(rcNorm(v[0]),unb64(u.rc.salt),u.rc.it||120000).then(function(h){if(h!==u.rc.hash){auFails++;if(auFails>=5)auWait=Date.now()+Math.min(300000,30000*Math.pow(2,auFails-5));return done("رمز الاسترجاع غير صحيح")}
+      var salt=crypto.getRandomValues(new Uint8Array(16));return Promise.all([pwHash(v[1],salt,210000),rcMake()]).then(function(r){var l=AU.users();l.forEach(function(x){if(x.id===u.id){x.salt=b64(salt);x.hash=r[0];x.it=210000;x.rc=r[1].rec}});AU.save(l);done();
+        rcShow(r[1].code,function(){authSet("in");$("#auEmail").value=u.email;authErr("تغيّرت كلمة المرور. ادخل بالكلمة الجديدة.",true)})})}).catch(function(){done("تعذّر الاسترجاع")})})}
 /* permissions */
 var PERMS=[["microphone","الميكروفون","mic"],["geolocation","الموقع","loc"],["notifications","التنبيهات","ntf"]];
 function permState(n){return new Promise(function(res){if(n==="notifications"&&"Notification" in window)return res(Notification.permission==="default"?"prompt":Notification.permission);
@@ -2516,11 +2537,27 @@ function permAsk(n){if(n==="microphone"){try{navigator.mediaDevices.getUserMedia
   else{try{Notification.requestPermission().then(permRender)}catch(e){}}}
 function permRender(){var g=$("#permG");if(!g)return;g.textContent="";PERMS.forEach(function(p){var b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";var a=document.createElement("span");a.textContent=p[1];var st=document.createElement("span");st.style.fontWeight="600";st.textContent="…";b.appendChild(a);b.appendChild(st);g.appendChild(b);
   permState(p[0]).then(function(v){st.textContent=v==="granted"?"مسموح":v==="denied"?"مرفوض":v==="prompt"?"اضغط للسماح":"غير متاح";st.style.color=v==="granted"?"#30D158":v==="denied"?"#FF6961":"#64D2FF";b.onclick=function(){if(v==="granted")toast(p[1]+": مسموح");else permAsk(p[0])}})})}
-function acRender(){var u=AU.me();if(!u)return;$("#acName").textContent=u.name||"حسابي";$("#acEmail").textContent=u.email}
+var LOCK_AFTER=5*60000,lockHidAt=0;
+function lockOn(){var u=AU.me();return !!(u&&u.pin&&u.pin.hash)}
+function lockShow(){if(document.getElementById("pinLock"))return;document.body.classList.add("locked");try{if(live)stop()}catch(e){}var u=AU.me(),usePw=false;
+  var box=document.createElement("div");box.id="pinLock";box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.style.cssText="position:fixed;inset:0;z-index:205;display:flex;align-items:center;justify-content:center;padding:24px 18px;background:radial-gradient(120% 70% at 50% 0%,rgba(110,123,255,.32),rgba(0,0,0,0) 60%),#000";
+  box.innerHTML='<form id="pinF" novalidate style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;text-align:center;color:#fff"><div style="font-size:30px;font-weight:700">مساعد</div><div id="pinWho" style="font-size:15px;color:rgba(255,255,255,.7)"></div><div class="af" style="text-align:start"><label for="pinIn" id="pinLbl">الرمز السري</label><div class="in"><input id="pinIn" type="password" dir="ltr" inputmode="numeric" autocomplete="off" maxlength="128" style="text-align:center;letter-spacing:6px"></div></div><p id="pinErr" role="alert" style="margin:0;min-height:20px;font-size:14px;color:#FF6961"></p><button type="submit" style="height:54px;border-radius:27px;border:0;background:#fff;color:#000;font:inherit;font-size:17px;font-weight:700">فتح</button><button type="button" id="pinPw" style="border:0;background:transparent;color:#64D2FF;font:inherit;font-size:15px;min-height:44px">استخدم كلمة المرور</button><button type="button" id="pinOut" style="border:0;background:transparent;color:rgba(255,255,255,.7);font:inherit;font-size:15px;min-height:44px">تسجيل الخروج</button></form>';
+  document.body.appendChild(box);$("#pinWho").textContent=(u.name||"")+" · "+u.email;var fails=0,inp=$("#pinIn");setTimeout(function(){try{inp.focus()}catch(e){}},200);
+  $("#pinPw").onclick=function(){usePw=!usePw;inp.value="";inp.setAttribute("inputmode",usePw?"text":"numeric");inp.style.letterSpacing=usePw?"0":"6px";$("#pinLbl").textContent=usePw?"كلمة المرور":"الرمز السري";this.textContent=usePw?"استخدم الرمز السري":"استخدم كلمة المرور";$("#pinErr").textContent=""};
+  $("#pinOut").onclick=function(){box.remove();document.body.classList.remove("locked");authOut()};
+  $("#pinF").onsubmit=function(e){e.preventDefault();var v=inp.value;if(!v)return;if(!usePw&&fails>=5){$("#pinErr").textContent="محاولات كثيرة. استخدم كلمة المرور.";return}
+    (usePw?authCheck(u,v):pwHash(v,unb64(u.pin.salt),u.pin.it||150000).then(function(h){return h===u.pin.hash})).then(function(ok){if(!ok){fails++;inp.value="";$("#pinErr").textContent=!usePw&&fails>=5?"محاولات كثيرة. استخدم كلمة المرور.":"غير صحيح";return}
+      box.remove();document.body.classList.remove("locked");lockHidAt=0})}}
+function authLock(){var u=AU.me();if(!u)return;if(lockOn()){authAsk("إيقاف قفل التطبيق",[{label:"اكتب كلمة المرور",ac:"current-password"}],"إيقاف",false,function(v,done){authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور غير صحيحة");var l=AU.users();l.forEach(function(x){if(x.id===u.id)delete x.pin});AU.save(l);done();acRender();toast("قفل التطبيق: متوقف")})});return}
+  authAsk("قفل التطبيق عند الفتح",[{label:"كلمة المرور الحالية",ac:"current-password"},{label:"رمز سري من 4 إلى 6 أرقام",type:"password",ac:"off"},{label:"أعد الرمز السري",type:"password",ac:"off"}],"تشغيل القفل",false,function(v,done){
+    if(!/^\d{4,6}$/.test(v[1]))return done("الرمز السري من 4 إلى 6 أرقام");if(v[1]!==v[2])return done("الرمزان غير متطابقين");
+    authCheck(u,v[0]).then(function(ok){if(!ok)return done("كلمة المرور غير صحيحة");var salt=crypto.getRandomValues(new Uint8Array(16));return pwHash(v[1],salt,150000).then(function(h){var l=AU.users();l.forEach(function(x){if(x.id===u.id)x.pin={salt:b64(salt),hash:h,it:150000}});AU.save(l);done();acRender();toast("قفل التطبيق: يعمل")})}).catch(function(){done("تعذّر الحفظ")})})}
+document.addEventListener("visibilitychange",function(){if(!lockOn())return;if(document.hidden)lockHidAt=Date.now();else if(lockHidAt&&Date.now()-lockHidAt>LOCK_AFTER)lockShow()});
+function acRender(){var u=AU.me();if(!u)return;try{$("#acLock").textContent="قفل التطبيق عند الفتح: "+(lockOn()?"يعمل":"متوقف");$("#acRc").textContent=u.rc&&u.rc.hash?"رمز استرجاع جديد":"أنشئ رمز استرجاع (مهم)"}catch(e){}$("#acName").textContent=u.name||"حسابي";$("#acEmail").textContent=u.email}
 $("#authBox").addEventListener("submit",authSubmit);$("#authTabIn").onclick=function(){authSet("in")};$("#authTabUp").onclick=function(){authSet("up")};$("#authForgot").onclick=authForgot;
 $("#auEye").onclick=function(){var i=$("#auPass"),sh=i.type==="password";i.type=sh?"text":"password";$("#auPass2").type=i.type;this.setAttribute("aria-label",sh?"إخفاء كلمة المرور":"إظهار كلمة المرور")};
-$("#acOut").onclick=authOut;$("#acPass").onclick=authPass;$("#acDel").onclick=authDel;
-if(!AU.me()){authShow()}else{acRender()}
+$("#acOut").onclick=authOut;$("#acPass").onclick=authPass;$("#acDel").onclick=authDel;$("#acRc").onclick=authRc;$("#acLock").onclick=authLock;
+if(!AU.me()){authShow()}else{acRender();if(lockOn())lockShow();else if(!(AU.me().rc&&AU.me().rc.hash)&&!sessionStorage.getItem("musaed.rcAsk")){try{sessionStorage.setItem("musaed.rcAsk","1")}catch(e){}setTimeout(function(){showAction({type:"card",key:"rcask",icon:"lock",tone:"ask",tagTone:"ask",title:"أنشئ رمز الاسترجاع",tag:"بدونه ما تقدر ترجع حسابك إذا نسيت كلمة المرور",keep:true,go:"#",goText:"أنشئه الآن",fn:function(){authRc()}})},1500)}}
 
 swInit();if(AU.me())qsBoot();lrStart();document.body.classList.toggle("driving",drvOn());document.body.classList.toggle("big",get("musaed.big")==="1");livePill();setTimeout(momTick,6000);setInterval(momTick,60000);
 document.addEventListener("visibilitychange",function(){if(!document.hidden){lrStart();momTick()}});

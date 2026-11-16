@@ -4,6 +4,8 @@ FIND=[]
 def F(sev,area,msg): FIND.append((sev,area,msg)); print("  !!",sev,area,"-",msg)
 srv=subprocess.Popen(["python3","-m","http.server","8767","--bind","127.0.0.1"],cwd=__import__("os").getcwd(),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
 URL="http://127.0.0.1:8767/index.html"
+RCOK="(()=>{var c=document.querySelector('[role=dialog] input[type=checkbox]');if(c){c.click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent==='تم').click()}})()"
+
 async def go():
     async with async_playwright() as p:
         b=await p.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"])
@@ -25,7 +27,7 @@ async def go():
         await pg.fill("#auName","عمر");await pg.fill("#auEmail","omar@test");await pg.fill("#auPass","123");await pg.click("#authGo");print(" bad email:",await pg.text_content("#authErr"))
         await pg.fill("#auEmail","Omar@Test.com");await pg.click("#authGo");print(" short password:",await pg.text_content("#authErr"))
         await pg.fill("#auPass","pass-omar-1");await pg.fill("#auPass2","pass-omar-2");await pg.click("#authGo");print(" mismatch:",await pg.text_content("#authErr"))
-        await pg.fill("#auPass2","pass-omar-1");await pg.click("#authGo");await pg.wait_for_timeout(2500)
+        await pg.fill("#auPass2","pass-omar-1");await pg.click("#authGo");await pg.wait_for_timeout(1800);await pg.evaluate(RCOK);await pg.wait_for_timeout(1800)
         st=await pg.evaluate("[document.body.classList.contains('locked'),localStorage.getItem('musaed.mem'),localStorage.getItem('musaed.key'),localStorage.getItem('musaed.name')]");print(" omar signed up, old data kept:",st[0]==False,"| memory",bool(st[1]),"| key",st[2],"| name",st[3])
         if st[0] or not st[1]: F("HIGH","login","sign up or move of existing data failed")
         users=json.loads(await pg.evaluate("localStorage.getItem('musaed.users')"));print(" stored account:",{k:(v if k in('email','name') else '…') for k,v in users[0].items()},"| password stored as text:", "pass-omar-1" in json.dumps(users))
@@ -40,7 +42,7 @@ async def go():
         print(" after sign out: locked",st[0],"| omar's memory visible",bool(st[1]),"| kept apart",st[2],"items | documents left in the open",idb)
         if not st[0] or st[1] or idb: F("HIGH","separation","data still visible after sign out")
         # second user sees nothing of omar
-        await pg.click("#authTabUp");await pg.fill("#auName","سارة");await pg.fill("#auEmail","sara@test.com");await pg.fill("#auPass","pass-sara-1");await pg.fill("#auPass2","pass-sara-1");await pg.click("#authGo");await pg.wait_for_timeout(2500)
+        await pg.click("#authTabUp");await pg.fill("#auName","سارة");await pg.fill("#auEmail","sara@test.com");await pg.fill("#auPass","pass-sara-1");await pg.fill("#auPass2","pass-sara-1");await pg.click("#authGo");await pg.wait_for_timeout(1800);await pg.evaluate(RCOK);await pg.wait_for_timeout(1800)
         st=await pg.evaluate("[document.body.classList.contains('locked'),localStorage.getItem('musaed.mem'),localStorage.getItem('musaed.exp'),localStorage.getItem('musaed.key'),localStorage.getItem('musaed.name')]");print(" sara signed in: sees omar's memory",bool(st[1]),"| expenses",bool(st[2]),"| key",st[3],"| name",st[4])
         if st[1] or st[2] or st[3]: F("HIGH","separation","second user sees the first user's data")
         await pg.evaluate("localStorage.setItem('musaed.mem',JSON.stringify([{id:'s1',t:'تحب الشاي',d:Date.now()}]))")
@@ -58,8 +60,8 @@ async def go():
             await pg.fill("#auEmail","sara@test.com");await pg.fill("#auPass","nope-"+str(i));await pg.click("#authGo");await pg.wait_for_timeout(1300)
         print(" after 6 wrong tries:",await pg.text_content("#authErr"))
         # forgot password -> delete account
-        await pg.fill("#auEmail","sara@test.com");await pg.click("#authForgot");await pg.wait_for_timeout(300);await pg.fill("#aa0","sara@test.com");await pg.click("#authAskF button[type=submit]");await pg.wait_for_timeout(800)
-        print(" forgot -> deleted:",await pg.text_content("#authErr"),"| accounts left:",[u["email"] for u in json.loads(await pg.evaluate("localStorage.getItem('musaed.users')"))],"| sara's data left:",await pg.evaluate("Object.keys(localStorage).filter(k=>k.indexOf('musaed@')===0&&localStorage.getItem(k).indexOf('الشاي')>-1).length"))
+        await pg.wait_for_timeout(31000);await pg.fill("#auEmail","sara@test.com");await pg.click("#authForgot");await pg.wait_for_timeout(300)
+        print(" forgot password now asks for the recovery code:",await pg.evaluate("!!document.querySelector('#authAskF')&&document.querySelector('label[for=aa0]').textContent"))
         await pg.screenshot(path="tests/out/au_login.png")
         print(" errors",errs);await b.close()
     srv.terminate()
