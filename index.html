@@ -615,7 +615,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.7",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.8",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -1090,7 +1090,7 @@ function handle(m){
   if(sc.modelTurn&&sc.modelTurn.parts&&!dropTurn&&!hushed){if(meMark<0){meMark=curMe?curMe.textContent.length:0;if(lastSpeechT&&Date.now()-lastSpeechT<20000)qmAdd("lat",Date.now()-lastSpeechT);lastSpeechT=0}sc.modelTurn.parts.forEach(function(p){
     if(p.inlineData&&p.inlineData.data){var r=/rate=(\d+)/.exec(p.inlineData.mimeType||"");playChunk(p.inlineData.data,r?+r[1]:24000)}})}
   if(sc.turnComplete){dropTurn=false;endTurn();infoWatch();if(delPend)delPend.armed=true;trySwap()}}
-function start(){
+function start(){if(document.body.classList.contains("locked")||!localStorage.getItem("musaed.cur"))return;
   if(live)return;
   if(!get(K.key)){openCard("set");return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("المتصفح لا يدعم الميكروفون. افتح الصفحة في Safari.");return}

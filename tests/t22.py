@@ -15,6 +15,10 @@ async def go():
         await pg.evaluate("new Promise(r=>{var q=indexedDB.open('musaed',1);q.onupgradeneeded=()=>q.result.createObjectStore('files');q.onsuccess=()=>{var tx=q.result.transaction('files','readwrite');tx.objectStore('files').put('DOC-A','doc/1');tx.oncomplete=()=>{q.result.close();r()}}})")
         await pg.reload();await pg.wait_for_timeout(900)
         st=await pg.evaluate("[document.body.classList.contains('locked'),document.querySelector('#authSub').textContent,!document.querySelector('#authMove').hidden,document.querySelector('#authSeg').hidden]")
+        nws=await pg.evaluate("performance.getEntriesByType('resource').filter(e=>e.name.indexOf('BidiGenerateContent')>-1).length")
+        await pg.wait_for_timeout(1500);live=await pg.evaluate("document.body.dataset.mode")
+        print(" voice on the sign-up page: mode",live)
+        if live not in ("idle",None,""): F("HIGH","login","the assistant starts talking behind the sign-up page")
         print(" first open:",st);await pg.screenshot(path="tests/out/au_first.png")
         if not st[0]: F("HIGH","login","app opens without an account")
         # validation
