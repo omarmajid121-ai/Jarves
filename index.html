@@ -539,7 +539,10 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
       <p class="gftr">كل حساب على هذا الجهاز له بياناته وذاكرته الخاصة، ولا يشوف أحد بيانات الثاني.</p>
       <p class="ghdr" style="margin-top:0">الصلاحيات</p>
       <div class="group" id="permG"></div>
-      <p class="gftr">إذا كانت الصلاحية مرفوضة، افتح إعدادات المتصفح للموقع واسمح بها.</p>
+      <p class="gftr" id="permF">إذا كانت الصلاحية مرفوضة، افتح إعدادات المتصفح للموقع واسمح بها.</p>
+      <p class="ghdr" id="natH" style="margin-top:0" hidden>نظام التنبيهات</p>
+      <div class="group" id="natG" hidden></div>
+      <p class="gftr" id="natF" hidden>تشتغل هذه التنبيهات حتى والتطبيق مقفل.</p>
       <p class="ghdr" style="margin-top:0">الحالة</p>
       <div class="group"><div id="diag" style="padding:12px 16px;font-size:15px;line-height:24px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text"></div></div>
       <div class="group"><button class="cell plain" id="lmBtn" type="button">الرجوع للنموذج الصوتي السابق</button></div>
@@ -615,7 +618,7 @@ body.locked #card,body.locked #act,body.locked #sheet,body.locked .top,body.lock
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.9",DG={lvl:-1,errs:[],calls:0,last:""};
+var MODEL_NEW="gemini-3.8-live",MODEL_OLD="gemini-3.1-flash-live-preview",MODEL=MODEL_NEW,BUILD="2026-11-16.10",DG={lvl:-1,errs:[],calls:0,last:""};
 var WS="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=";
 var K={key:"musaed.key",voice:"musaed.voice",name:"musaed.name",log:"musaed.log",loc:"musaed.loc",pf:"musaed.pf",gid:"musaed.gid",gtok:"musaed.gtok",notes:"musaed.notes",exp:"musaed.exp",dev:"musaed.dev",ct:"musaed.ct",cs:"musaed.cs",ck:"musaed.ck",dia:"musaed.dia",diac:"musaed.diac",cal:"musaed.cal",lm:"musaed.lm"};
 var _fetch=window.fetch?window.fetch.bind(window):null;
@@ -626,7 +629,7 @@ var AUTH_LOCKING=false,STORE_FULL=0;
 function set(k,v){if(AUTH_LOCKING)return;try{localStorage.setItem(k,v)}catch(e){STORE_FULL=Date.now();if(!set.warned){set.warned=1;setTimeout(function(){try{toast("ذاكرة الجهاز ممتلئة، بعض البيانات ما انحفظت")}catch(x){}},0)}}}
 
 var ws=null,ctx=null,mic=null,src=null,proc=null,mute=null,wake=null,anIn=null,anOut=null,outBus=null;
-var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={my_places:13000,place_reminder:14000,web_search:17000,read_page:24000,assistant_call:75000,confirm_call:75000,show_route:11000};
+var rs=null,rsSent=false,resumeTry=false,resumeNext=false,reconn=false,hidAt=0,connT=0,rsFail=0,wantSwap=false,toolBusy=0,delPend=null,docSavedAt=null,TLIM={bank_expenses:16000,phone_messages:12000,call_history:12000,contacts_find:12000,my_places:13000,place_reminder:14000,web_search:17000,read_page:24000,assistant_call:75000,confirm_call:75000,show_route:11000};
 var live=false,ready=false,attempt=0,nextT=0,playing=[],dropTurn=false,pendingText="",mode="idle",startedAt=0,userEnded=false;
 var log=[],curMe=null,curAi=null,muted=false,hushed=false,hushMe=null,meMark=-1,langNote="";
 try{log=JSON.parse(get(K.log)||"[]")||[]}catch(e){log=[]}
@@ -1020,7 +1023,7 @@ function modelPick(){var v=null;try{v=JSON.parse(get(K.lm)||"null")}catch(e){}re
 function setupMsg(){
   var s={model:"models/"+MODEL,
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voiceName()}}}},
-    systemInstruction:{parts:[{text:prompt()}]}};
+    systemInstruction:{parts:[{text:prompt()+natPrompt()}]}};
   if(attempt<3){s.inputAudioTranscription={};s.outputAudioTranscription={};
     s.realtimeInputConfig={automaticActivityDetection:{startOfSpeechSensitivity:"START_SENSITIVITY_LOW",prefixPaddingMs:240,silenceDurationMs:700},activityHandling:"START_OF_ACTIVITY_INTERRUPTS"}}
   if(attempt<2)s.tools=[{functionDeclarations:[{name:"show_action",description:"Show an on-screen card the user taps to confirm: a phone call that HE dials and speaks on himself, an SMS, a WhatsApp message, or map directions. Not for calls where you should do the talking.",
@@ -1034,7 +1037,7 @@ function setupMsg(){
       parameters:{type:"OBJECT",properties:{action:{type:"STRING",enum:["buy","sell","remove","set_target"]},name:{type:"STRING",description:"Company or stock name; reuse the name already in the portfolio"},
         symbol:{type:"STRING",description:"Ticker or Tadawul code, if known"},shares:{type:"NUMBER"},price:{type:"NUMBER",description:"Price per share he paid or got"},target:{type:"NUMBER",description:"His target price, for set_target"}},required:["action","name"]}},
     {name:"show_portfolio",description:"Show the user's portfolio card on screen and get his holdings back. Pass the latest prices you found by search so the card can show value and gain.",
-      parameters:{type:"OBJECT",properties:{quotes:{type:"ARRAY",items:{type:"OBJECT",properties:{name:{type:"STRING"},price:{type:"NUMBER"}},required:["name","price"]}}}}}].concat(XDECL)}];
+      parameters:{type:"OBJECT",properties:{quotes:{type:"ARRAY",items:{type:"OBJECT",properties:{name:{type:"STRING"},price:{type:"NUMBER"}},required:["name","price"]}}}}}].concat(XDECL,natDecl())}];
   if(s.tools&&MODEL===MODEL_NEW)s.tools[0].functionDeclarations=s.tools[0].functionDeclarations.map(function(f){f=Object.assign({},f);f.behavior="BLOCKING";return f});
   if(attempt===0&&s.tools&&MODEL!==MODEL_NEW)s.tools.unshift({googleSearch:{}});
   rsSent=false;
@@ -1282,7 +1285,7 @@ function whenText(d){try{return d.toLocaleString("ar-SA-u-ca-gregory-nu-latn",{w
 /* ---------- calendar: kept on the phone, mirrored to Google Calendar when it is connected ---------- */
 var KIND={meeting:["اجتماع","#0A84FF"],appointment:["موعد","#BF5AF2"],reminder:["تذكير","#FFD60A"]},DAYS=["أحد","إثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"],gQuiet=0;
 function calGet(){return lsArr(K.cal)}
-function calSet(a){set(K.cal,JSON.stringify(a.slice(-400)));BR.t=0}
+function calSet(a){set(K.cal,JSON.stringify(a.slice(-400)));BR.t=0;natAlarmSoon()}
 function kindOf(title,k){if(KIND[k])return k;return /^\s*تذكير|remind/i.test(title)?"reminder":/اجتماع|ميتنق|meeting/i.test(title)?"meeting":"appointment"}
 function gapiQ(method,url,body,cb){if(!gtok())return cb({error:"google_not_connected"},null);gQuiet++;gapi(method,url,body,function(e,j){gQuiet--;cb(e,j)})}
 function calStored(){return gtok()?"on his phone and in Google Calendar":"on his phone (Google Calendar is not connected)"}
@@ -1463,9 +1466,11 @@ TOOLS.task_done=function(a,cb){var id=encodeURIComponent(String(a.task_id||""));
 TOOLS.contacts_find=function(a,cb){var q=String(a.name||"").trim().slice(0,80);if(!q)return cb({error:"name is required"});
   var pp=pplFind(q);if(pp&&pp.number)return cb({matches:[{name:pp.name||pp.rel,relation:pp.rel,phones:[pp.number]}],source:"his people"});
   var loc=ctFind(q);if(loc.length)return cb({matches:loc.map(function(x){return {name:x.n,phones:[x.p]}}),source:"saved on his phone"});
-  if(!gtok())return cb({matches:[],note:"No saved number for this name, and Google contacts are not connected. Ask him for the number once; it is remembered on his phone after that."});
+  if(natOn()&&NAT.perms.contacts!=="denied"){natRun("contacts",{query:q,limit:6}).then(function(r){var l=cArr(r&&r.items);if(l.length)return cb({matches:l.map(function(x){return {name:x.name,phones:cArr(x.phones).slice(0,3)}}),source:"his phone contacts"});ctGoogle()},function(){ctGoogle()});return}
+  ctGoogle();function ctGoogle(){
+  if(!gtok())return cb({matches:[],note:natOn()?"No contact with this name on his phone or in his saved numbers. Ask him for the number once; it is remembered after that.":"No saved number for this name, and Google contacts are not connected. Ask him for the number once; it is remembered on his phone after that."});
   gapi("GET","https://people.googleapis.com/v1/people:searchContacts?pageSize=5&readMask=names,phoneNumbers&query="+encodeURIComponent(q),null,function(err,j){if(err)return cb(err);
-    cb({matches:(j.results||[]).map(function(r){var p=r.person||{};return {name:(p.names&&p.names[0]&&p.names[0].displayName)||"",phones:(p.phoneNumbers||[]).map(function(x){return x.canonicalForm||x.value})}}).filter(function(x){return x.name})})})};
+    cb({matches:(j.results||[]).map(function(r){var p=r.person||{};return {name:(p.names&&p.names[0]&&p.names[0].displayName)||"",phones:(p.phoneNumbers||[]).map(function(x){return x.canonicalForm||x.value})}}).filter(function(x){return x.name})})})}};
 TOOLS.note_add=function(a,cb){var t=String(a.text||"").trim().slice(0,600);if(!t)return cb({error:"text is required"});var prev=lsArr(K.notes),n=prev.concat([{x:t,d:Date.now()}]).slice(-200);set(K.notes,JSON.stringify(n));renderData();
   toast("ملاحظة: "+t.slice(0,40),function(){set(K.notes,JSON.stringify(prev));renderData()});cb({ok:true,saved_on_device:true,count:n.length})};
 TOOLS.notes_find=function(a,cb){var q=pfKey(a.query),n=lsArr(K.notes).filter(function(x){return !q||pfKey(x.x).indexOf(q)>-1}).slice(-20).reverse();cb({notes:n.map(function(x){return {text:x.x,date:locISO(new Date(x.d)).slice(0,10)}})})};
@@ -2256,7 +2261,7 @@ function qtRun(){if(qtBusy)return;if(!get(K.key).trim())return toast("أدخل �
 /* ---- notifications (while the app is open or in the background) ---- */
 var swReg=null;
 function swInit(){try{if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").then(function(r){swReg=r},function(){})}catch(e){}}
-function notify(title,body,tag){try{if(!document.hidden||!("Notification" in window)||Notification.permission!=="granted")return;var o={body:body,tag:tag||"musaed",icon:"icon-192.png",badge:"icon-192.png",vibrate:[80,40,80]};
+function notify(title,body,tag){if(natOn())return natNotify(title,body,tag);try{if(!document.hidden||!("Notification" in window)||Notification.permission!=="granted")return;var o={body:body,tag:tag||"musaed",icon:"icon-192.png",badge:"icon-192.png",vibrate:[80,40,80]};
   if(swReg&&swReg.showNotification)swReg.showNotification(title,o);else new Notification(title,o)}catch(e){}}
 function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p||[60,40,60])}catch(e){}}
 function moment(o){var log=lsArr(K.mom).filter(function(x){return Date.now()-x.t<3*864e5});if(log.some(function(x){return x.k===o.k}))return false;log.push({k:o.k,t:Date.now()});set(K.mom,JSON.stringify(log.slice(-120)));
@@ -2408,7 +2413,7 @@ $("#sheetClose").onclick=$("#sheetGrab").onclick=closeSheet;
 $("#sheetGo").addEventListener("click",function(e){if(sheetFn){e.preventDefault();var f=sheetFn;closeSheet();f()}});
 $("#sheetSecond").onclick=function(){var f=sheetSec;if(f)f()};
 $("#actAlt").onclick=function(){var f=altFn;altFn=null;closeAction();if(f)f()};
-$("#actGo").addEventListener("click",function(e){if(goFn){e.preventDefault();var f=goFn;goFn=null;closeAction();f();return}if(act&&act.type==="pf"){e.preventDefault();closeAction();openCard("pf");return}flash=1;try{if(navigator.vibrate)navigator.vibrate(18)}catch(e){}});
+$("#actGo").addEventListener("click",function(e){if(!goFn&&natTel(e,this))return;if(goFn){e.preventDefault();var f=goFn;goFn=null;closeAction();f();return}if(act&&act.type==="pf"){e.preventDefault();closeAction();openCard("pf");return}flash=1;try{if(navigator.vibrate)navigator.vibrate(18)}catch(e){}});
 $("#paneSet").addEventListener("click",function(e){var b=e.target.closest("[data-demo]");if(!b)return;var t=b.getAttribute("data-demo");closeCard();if(t==="pf"){showPortfolio({});return}
   showAction(t==="call"?{type:"call",name:"محمد"}:t==="sms"?{type:"sms",name:"محمد",text:"سأتأخر ربع ساعة عن الموعد."}:t==="email"?{type:"email"}:{type:"meeting",title:"اجتماع المتابعة",when:"الأحد، الساعة 11 صباحًا",name:"خالد"})});
 $("#endBtn").onclick=$("#xBtn").onclick=function(){closeAll();userEnded=true;stop();$("#caption").textContent=""};
@@ -2420,7 +2425,7 @@ $("#chips").addEventListener("click",function(e){var b=e.target.closest("[data-s
 $("#form").onsubmit=function(e){e.preventDefault();var v=$("#q").value.trim();if(!v)return;$("#q").value="";sendText(v)};
 function tab(which){var M={chat:"Chat",pf:"Pf",set:"Set"};Object.keys(M).forEach(function(k){var on=k===which;$("#tab"+M[k]).setAttribute("aria-selected",String(on));$("#pane"+M[k]).classList.toggle("on",on)});if(which==="pf")renderPf()}
 $("#tabChat").onclick=function(){tab("chat")};$("#tabPf").onclick=function(){tab("pf")};$("#tabSet").onclick=function(){tab("set")};
-function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
+function showDiag(){var e=$("#diag");if(!e)return;try{acRender();permRender()}catch(x){}try{$("#coreBtn").textContent="شكل النواة: "+CORE_N[coreStyle()];$("#bigBtn").textContent="حجم الخط: "+(get("musaed.big")==="1"?"كبير":"عادي");$("#prmBtn").textContent="وضع الصلاة: "+(prOn()?"يعمل":"متوقف");$("#ntfBtn").textContent="Notification" in window&&Notification.permission==="granted"?"التنبيهات: مفعّلة":"تفعيل التنبيهات"}catch(x){}setTimeout(function(){var q=null;try{q=JSON.parse(get("musaed.qt")||"null")}catch(x){}e.textContent+=(STORE_FULL?"\nالتخزين: ممتلئ، بعض البيانات ما انحفظت":"")+"\nتوقفها: من Google "+(DG.intr||0)+" · من الميكروفون "+(DG.barge||0)+" · إسكات "+(DG.hush||0)+qmLine()+(q?"\nاختبار الفهم: "+Math.round(q.ok/Math.max(1,q.n-q.err)*100)+"% ("+q.ok+" من "+(q.n-q.err)+")":"")+(drvOn()?"\nوضع القيادة: يعمل":"")+natDiag()},0);var L=["أوامر + بحث","أوامر + بحث","بدون أوامر","بدون أوامر ولا نص"];
   var lm=$("#lmBtn");if(lm)lm.textContent=modelPick()===MODEL_NEW?"الرجوع للنموذج الصوتي السابق":"استخدام النموذج الصوتي الأحدث";
   e.textContent="الإصدار: "+BUILD+"\nالنموذج الصوتي: "+(modelPick()===MODEL_NEW?"الأحدث (3.8)":"السابق (3.1)")+"\nالجلسة: "+(DG.lvl<0?(live?"جارٍ الاتصال":"غير متصلة"):L[DG.lvl]||"؟")+"\nإعادة الاتصال الهادئة: "+(DG.rc||0)+" مرات"+"\nالذاكرة: "+memGet().length+" معلومة · الملخص تحدّث "+(DG.sum||0)+" مرات · السجل "+histDays().length+" يوم"+"\nالبحث: "+(DG.ws?(DG.ws.err?"خطأ ("+DG.ws.err+")":"آخر بحث "+(DG.ws.ms/1000).toFixed(1)+" ث")+" · "+DG.ws.n+" مرات":"لم يُستخدم بعد")+(DG.ws&&DG.ws.err&&DG.wsMsg?"\nرد Google: "+DG.wsMsg:"")+"\nقراءة الصفحات: "+(DG.rp?(DG.rp.err?"آخر مرة خطأ ("+DG.rp.err+")":"آخر مرة "+(DG.rp.ms/1000).toFixed(1)+" ث")+" · "+DG.rp.n+" مرات":"لم تُستخدم بعد")+"\nطلبات الأوامر: "+DG.calls+(DG.last?" · آخرها "+DG.last:"")+"\nGoogle: "+(gtok()?"مربوط":"غير مربوط")+"\nاللهجة: "+(diaA()||"سعودية")+(diaC()!==diaA()?" · المكالمات: "+(diaC()||"سعودية"):"")+(DG.errs.length?"\nأخطاء: "+DG.errs.join(" | "):"")}
 function openCard(which){showDiag();if(which)tab(which);$("#gidIn").value=gid();showG();renderDev();$("#keyIn").value=get(K.key);$("#nameIn").value=get(K.name);$("#voiceIn").value=get(K.voice)||"Kore";$("#card").classList.add("open");$("#gripText").textContent="اسحب للأسفل"}
@@ -2528,6 +2533,122 @@ function authForgot(){var em=$("#auEmail").value.trim().toLowerCase(),u=AU.users
     pwHash(rcNorm(v[0]),unb64(u.rc.salt),u.rc.it||120000).then(function(h){if(h!==u.rc.hash){auFails++;if(auFails>=5)auWait=Date.now()+Math.min(300000,30000*Math.pow(2,auFails-5));return done("رمز الاسترجاع غير صحيح")}
       var salt=crypto.getRandomValues(new Uint8Array(16));return Promise.all([pwHash(v[1],salt,210000),rcMake()]).then(function(r){var l=AU.users();l.forEach(function(x){if(x.id===u.id){x.salt=b64(salt);x.hash=r[0];x.it=210000;x.rc=r[1].rec}});AU.save(l);done();
         rcShow(r[1].code,function(){authSet("in");$("#auEmail").value=u.email;authErr("تغيّرت كلمة المرور. ادخل بالكلمة الجديدة.",true)})})}).catch(function(){done("تعذّر الاسترجاع")})})}
+/* ================= Android app: phone access (SMS, calls, contacts, notifications) ================= */
+function natOn(){try{return !!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins&&Capacitor.Plugins.Musaed)}catch(e){return false}}
+function natRun(m,a){try{return Promise.resolve(Capacitor.Plugins.Musaed[m](a||{}))}catch(e){return Promise.reject(e)}}
+var NAT={info:null,perms:{},call:{state:"idle"},pend:null,alT:0},NPERMS=[["mic","الميكروفون"],["loc","الموقع"],["camera","الكاميرا"],["notify","التنبيهات"],["sms","الرسائل النصية"],["calls","سجل المكالمات والمتصل"],["contacts","جهات الاتصال"],["dial","الاتصال المباشر"],["listener","إشعارات التطبيقات الأخرى"],["battery","العمل في الخلفية"],["exact","التذكير في وقته بالدقيقة"]];
+var NPTXT={sms:"Messages",calls:"Call log",contacts:"Contacts",dial:"Phone calls",listener:"Notification access",notify:"Notifications"};
+function natNo(e,which){var c=e&&e.code||"";if(c==="no_permission")return {error:"permission_off",permission:which,tell_user:"The «"+(NPERMS.filter(function(p){return p[0]===which})[0]||["",which])[1]+"» switch is off in Settings › الصلاحيات. Tell him in one sentence and offer to open it with open_permission."};
+  return {error:"phone_read_failed",tell_user:"Reading from the phone did not work this time. Say so in one sentence and offer to try again."}}
+function natAgo(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return "الحين";if(m<60)return "قبل "+arN(m,AMN);var h=Math.round(m/60);if(h<24)return "قبل "+arN(h,AH);var d=new Date(t);return whenText(d)}
+function natMask(s){s=String(s||"");return /(رمز|كلمة المرور|كلمة السر|التحقق|OTP|code|passcode|verification|password)/i.test(s)?s.replace(/\d[\d\s-]{2,9}\d/g,"••••"):s}
+function natSince(days,maxD){var d=+days;if(!(d>0))d=7;d=Math.min(maxD||365,d);return Math.floor(Date.now()-d*864e5)}
+/* ---- bank messages to expenses ---- */
+var NCAT=[[/مطعم|كافيه|كوفي|قهوة|coffee|cafe|café|starbucks|ستاربكس|كودو|kudu|البيك|albaik|mcdonald|ماكدونالدز|burger|برجر|pizza|بيتزا|hungerstation|هنقرستيشن|jahez|جاهز|مرسول|marsool|keeta|كيتا|talabat|طلبات|shawarma|شاورما|restaurant/i,"مطاعم"],
+  [/بنزين|محطة|وقود|petrol|fuel|aldrees|الدريس|sasco|ساسكو|naft|نفط/i,"بنزين"],
+  [/سوبرماركت|هايبر|بندة|panda|الدانوب|danube|othaim|العثيم|carrefour|كارفور|lulu|لولو|tamimi|التميمي|نستو|nesto|grocery|بقالة|ماركت|market/i,"بقالة"],
+  [/صيدلية|pharmacy|النهدي|nahdi|الدواء|aldawaa|مستشفى|hospital|clinic|عيادة|مستوصف/i,"صحة"],
+  [/uber|أوبر|careem|كريم|bolt|بولت|taxi|تاكسي|parking|مواقف|سار|saptco|سابتكو|flynas|طيران|saudia|السعودية للطيران|airline/i,"مواصلات"],
+  [/stc|موبايلي|mobily|زين|zain|كهرباء|electricity|المياه|water|فاتورة|سداد|sadad|bill/i,"فواتير"],
+  [/amazon|أمازون|noon|نون|shein|شي ان|ikea|ايكيا|extra|اكسترا|jarir|جرير|centrepoint|سنتربوينت|mall|مول|store|متجر/i,"تسوق"],
+  [/netflix|نتفلكس|shahid|شاهد|spotify|سبوتيفاي|apple\.com|itunes|google|youtube|osn|subscription|اشتراك/i,"اشتراكات"]];
+function natDigits(s){return String(s||"").replace(/٫/g,".").replace(/٬/g,",").replace(/[٠-٩]/g,function(d){return "٠١٢٣٤٥٦٧٨٩".indexOf(d)}).replace(/[۰-۹]/g,function(d){return "۰۱۲۳۴۵۶۷۸۹".indexOf(d)})}
+function bankParse(text){var t=natDigits(text).replace(/ /g," ");
+  if(!/(شراء|مشتريات|مدى|مدي|خصم|سحب|دفع|سداد|purchase|\bpos\b|debit|withdraw|payment|paid|apple ?pay)/i.test(t))return null;
+  if(/(رمز|كلمة المرور|otp|\bcode\b|إيداع|ايداع|وارد|راتب|credited|deposit|refund|استرداد|مرفوض|declined|رفض|لم تتم|failed)/i.test(t))return null;
+  var num="([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)",cur="(?:SAR|SR|ر\\.?\\s?س|ريال)";
+  var m=t.match(new RegExp(cur+"\\s*:?\\s*"+num,"i"))||t.match(new RegExp(num+"\\s*"+cur,"i"));
+  if(!m){var f=t.match(/(USD|EUR|GBP|AED|\$|€|£|دولار|يورو|درهم)\s*:?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(USD|EUR|GBP|AED|دولار|يورو|درهم)/i);
+    return f?{foreign:true,cur:(f[1]||f[4]||"").toUpperCase(),amount:+(f[2]||f[3]||"0").replace(/,/g,"")}:null}
+  var amt=+String(m[1]).replace(/,/g,"");if(!(amt>0)||amt>1e7)return null;
+  var mer="",mm=t.match(/(?:لدى|من|في|عند|التاجر|المتجر|at|from|merchant|to)\s*:?\s*([^\n\r:،,؛;]{2,40})/i);
+  if(mm){mer=mm[1].replace(/\s*(بمبلغ|مبلغ|بتاريخ|تاريخ|في|on|amount|بطاقة|card|مدى|mada|SAR|ريال|[0-9]{2}[\/-][0-9]{2}).*$/i,"").trim()}
+  var card=(t.match(/(?:\*|x|بطاقة[^0-9\n]{0,20}|card[^0-9\n]{0,20}|ending\s*)([0-9]{4})\b/i)||[])[1]||"";
+  var cat="أخرى",i,hay=mer+" "+t;for(i=0;i<NCAT.length;i++)if(NCAT[i][0].test(hay)){cat=NCAT[i][1];break}
+  return {amount:Math.round(amt*100)/100,merchant:cS(mer,40),card:card,cat:cat}}
+function bankIds(){try{var a=JSON.parse(get("musaed.smsIds")||"[]");return Array.isArray(a)?a.map(String):[]}catch(e){return []}}
+function bankImport(o,cb){o=o||{};natRun("sms",{since:o.since||natSince(o.days||30,365),limit:500}).then(function(r){
+    var seen={},ids=bankIds();ids.forEach(function(x){seen[x]=1});
+    var add=[],foreign=[],items=cArr(r&&r.items);
+    items.forEach(function(s){var id=String(s.id||(s.from+"|"+s.t));if(seen[id])return;var p=bankParse(s.text);if(!p)return;
+      if(p.foreign){foreign.push({from:s.name||s.from,amount:p.amount,currency:p.cur,when:natAgo(s.t)});return}
+      add.push({id:id,a:p.amount,c:p.cat,x:cS((p.merchant?p.merchant:"رسالة "+(s.name||s.from))+(p.card?" · بطاقة "+p.card:""),120),d:s.t||Date.now(),bank:s.name||s.from})});
+    if(o.preview)return cb({purchases:add.map(function(x){return {amount:x.a,category:x.c,where:x.x,bank:x.bank,when:natAgo(x.d)}}),foreign_currency:foreign,saved:false});
+    if(add.length){var b=budGet(),prev=lsArr(K.exp),nw=add.map(function(x){var c=x.c,k;for(k in b.cats)if(catSame(k,c)){c=k;break}return {a:x.a,c:c,x:x.x,d:x.d,sm:x.id}});
+      set(K.exp,JSON.stringify(prev.concat(nw)));set("musaed.smsIds",JSON.stringify(ids.concat(add.map(function(x){return x.id})).slice(-3000)));renderData();
+      var tot=add.reduce(function(s,x){return s+x.a},0);
+      toast((add.length===1?"سجّلت مصروف ":"سجّلت "+add.length+" مصاريف · ")+fmt(tot)+" ر.س من رسائل البنك",function(){set(K.exp,JSON.stringify(prev));set("musaed.smsIds",JSON.stringify(ids));renderData()})}
+    var al=[];add.forEach(function(x){budAlert(x.c).forEach(function(y){if(!al.some(function(z){return z.budget===y.budget}))al.push(y)})});
+    cb({saved:add.length,total:Math.round(add.reduce(function(s,x){return s+x.a},0)*100)/100,purchases:add.slice(0,15).map(function(x){return {amount:x.a,category:x.c,where:x.x,when:natAgo(x.d)}}),foreign_currency:foreign,budget_alerts:al,
+      note:add.length?"Logged on his phone. He can undo from the toast.":"No new bank purchases in those messages."})},function(e){cb(natNo(e,"sms"))})}
+function natAutoOn(){return get("musaed.natAuto")!=="0"}
+/* ---- tools ---- */
+function natDecl(){if(!natOn())return [];return [
+  {name:"phone_messages",description:"Read SMS text messages on his Android phone, newest first. Use it when he asks what someone or the bank sent him, or for his latest messages. Verification codes come back hidden; never read codes or passwords aloud.",
+    parameters:{type:"OBJECT",properties:{query:{type:"STRING",description:"Sender name, number, or a word in the message"},days:{type:"NUMBER",description:"How many days back, default 7"},limit:{type:"NUMBER",description:"How many messages, default 8"}}}},
+  {name:"bank_expenses",description:"Turn purchases in his bank SMS messages into expenses. import saves the ones not saved before; preview only lists them. Use it when he asks to log his spending from bank messages or asks what the bank messages say he spent.",
+    parameters:{type:"OBJECT",properties:{action:{type:"STRING",enum:["import","preview"]},days:{type:"NUMBER",description:"How many days back, default 30"}},required:["action"]}},
+  {name:"call_history",description:"His phone's call log: missed, incoming and outgoing calls. For «when did I last speak to X» pass name and limit 1. For «who called me» use type missed or incoming.",
+    parameters:{type:"OBJECT",properties:{type:{type:"STRING",enum:["all","missed","incoming","outgoing"]},name:{type:"STRING",description:"Person's name or number"},days:{type:"NUMBER",description:"How many days back, default 30"},limit:{type:"NUMBER",description:"Default 10"}}}},
+  {name:"phone_notifications",description:"Notifications other apps showed on his phone (WhatsApp, banks, deliveries, any app) in recent hours. Use it when he asks what came in, what someone wrote on WhatsApp, or for a delivery update.",
+    parameters:{type:"OBJECT",properties:{app:{type:"STRING",description:"App name, e.g. WhatsApp"},query:{type:"STRING",description:"A word or a person's name"},hours:{type:"NUMBER",description:"How many hours back, default 12"},limit:{type:"NUMBER",description:"Default 10"}}}},
+  {name:"phone_call",description:"Get a call to a number ready on his phone; he talks himself. A card appears with a call button. Ask him «أتصل على فلان؟». Call phone_call_confirm only after he clearly says yes.",
+    parameters:{type:"OBJECT",properties:{name:{type:"STRING"},number:{type:"STRING",description:"Digits only; get it from contacts_find first"}},required:["number"]}},
+  {name:"phone_call_confirm",description:"Place the call that phone_call prepared. Only right after he clearly said yes to that call."},
+  {name:"open_permission",description:"Open the Android screen that turns on one phone permission he asked for, or one a tool said is off.",
+    parameters:{type:"OBJECT",properties:{name:{type:"STRING",enum:["sms","calls","contacts","dial","notify","listener","battery","exact","mic","loc","camera"]}},required:["name"]}}]}
+function natPrompt(){if(!natOn())return "";return "\n\n## Android phone\nYou run inside his Android app. You can read his SMS (phone_messages), log purchases from bank messages (bank_expenses), read his call log and say when he last spoke with someone (call_history), read notifications other apps showed (phone_notifications), find people in his phone contacts (contacts_find), and get a call ready (phone_call, then phone_call_confirm only after he says yes). Never read verification codes or passwords aloud. Read only what he asked for and summarise long messages. If a tool says a permission is off, tell him which switch in one sentence and offer to open it (open_permission)."}
+TOOLS.phone_messages=function(a,cb){a=a||{};var n=Math.min(30,Math.max(1,+a.limit||8));natRun("sms",{since:natSince(a.days||7,365),limit:n,query:cS(a.query,60)}).then(function(r){
+  var l=cArr(r&&r.items).map(function(s){return {from:s.name||s.from,number:s.name?s.from:"",when:natAgo(s.t),text:natMask(s.text).slice(0,500)}});
+  cb({messages:l,count:l.length,note:l.length?"":"No messages matched."})},function(e){cb(natNo(e,"sms"))})};
+TOOLS.bank_expenses=function(a,cb){a=a||{};bankImport({days:a.days||30,preview:a.action==="preview"},cb)};
+TOOLS.call_history=function(a,cb){a=a||{};var n=Math.min(50,Math.max(1,+a.limit||10)),ty={missed:1,incoming:1,outgoing:1}[a.type]?a.type:"all",q=cS(a.name,60);
+  var go=function(query){natRun("calls",{since:natSince(a.days||30,365),limit:n,type:ty,query:query}).then(function(r){var TN={incoming:"واردة",outgoing:"صادرة",missed:"فائتة",rejected:"مرفوضة",blocked:"محظورة",voicemail:"بريد صوتي",other:"أخرى"};
+    var l=cArr(r&&r.items).map(function(c){return {name:c.name||"",number:c.number,type:TN[c.type]||c.type,when:natAgo(c.t),minutes:c.secs?Math.round(c.secs/6)/10:0}});
+    cb({calls:l,count:l.length,note:l.length?"":(q?"No calls with that name in those days.":"No calls in those days.")})},function(e){cb(natNo(e,"calls"))})};
+  if(q&&!/\d{6,}/.test(natDigits(q))){var pp=pplFind(q);if(pp&&pp.number)return go(pp.number)}go(q)};
+TOOLS.phone_notifications=function(a,cb){a=a||{};var h=+a.hours>0?Math.min(72,+a.hours):12;natRun("notes",{since:Math.floor(Date.now()-h*36e5),limit:Math.min(30,Math.max(1,+a.limit||10)),app:cS(a.app,40),query:cS(a.query,60)}).then(function(r){
+  var l=cArr(r&&r.items).map(function(x){return {app:x.app,title:natMask(x.title).slice(0,120),text:natMask(x.text).slice(0,400),when:natAgo(x.t)}});cb({notifications:l,count:l.length,note:l.length?"":"Nothing matched in that time. Only notifications that arrived after he turned on notification access are kept."})},function(e){cb(natNo(e,"listener"))})};
+TOOLS.phone_call=function(a,cb){a=a||{};var num=natDigits(a.number).replace(/[^\d+]/g,"").slice(0,20),name=cS(a.name,60);if(num.replace(/\D/g,"").length<3)return cb({error:"number is required; get it from contacts_find"});
+  NAT.pend={num:num,name:name,t:Date.now()};showAction({type:"call",name:name,number:num});cb({ready:true,ask_user:"Ask him: «أتصل على "+(name||num)+"؟» Call phone_call_confirm only if he says yes. He can also tap the call button."})};
+TOOLS.phone_call_confirm=function(a,cb){var p=NAT.pend;if(!p||Date.now()-p.t>120000){NAT.pend=null;return cb({error:"no_pending_call",tell_user:"No call is waiting. Ask who to call."})}NAT.pend=null;
+  natRun("dial",{number:p.num,direct:true}).then(function(r){try{closeAction()}catch(e){}cb({calling:r&&r.mode==="calling",opened_dialer:r&&r.mode==="dialer",note:r&&r.mode==="dialer"?"The dialer opened with the number; he presses call.":"The call is starting. Stay quiet now."})},function(){cb({error:"dial_failed",tell_user:"The call did not start. Say so and offer the call button on the card."})})};
+TOOLS.open_permission=function(a,cb){var n=cS(a&&a.name,20);if(!NPERMS.some(function(p){return p[0]===n}))return cb({error:"unknown permission"});natRun("ask",{name:n}).then(function(r){setTimeout(natPermRender,800);cb({state:r&&r.state,note:r&&r.state==="settings"?"An Android settings screen opened; he switches it on there.":""})},function(){cb({error:"could not open"})})};
+/* ---- events from the phone ---- */
+function natCallEv(d){d=d||{};var prev=NAT.call.state;NAT.call=d;
+  if(d.state==="ringing"&&prev!=="ringing"){try{if(live)stop()}catch(e){}if(!document.hidden)toast("يتصل: "+(d.name||d.number||"رقم مخفي"))}
+  else if(d.state==="active"){try{if(live)stop()}catch(e){}}
+  else if(d.state==="idle"&&prev==="ringing"&&!document.hidden){var who=d.name||d.number||"رقم مخفي",num=String(d.number||"").replace(/[^\d+]/g,"");
+    showAction({type:"card",key:"missed",icon:"phone",tone:"go",title:"مكالمة فائتة",tag:who,blocks:[{t:"kv",rows:[["من",who],["الوقت",t12(new Date().getHours()*60+new Date().getMinutes())]]}],go:num?"tel:"+num:"",goText:num?"اتصل عليه":""})}}
+function natSmsEv(d){d=d||{};if(d.spend&&natAutoOn()&&AU.me())setTimeout(function(){bankImport({since:Math.floor((d.t||Date.now())-6e5)},function(){})},1500)}
+function natTel(e,el){if(!natOn())return false;var h=el&&el.getAttribute("href")||"";if(!/^tel:/i.test(h))return false;e.preventDefault();var n=h.slice(4);
+  natRun("dial",{number:n,direct:true}).catch(function(){try{location.href=h}catch(x){}});NAT.pend=null;try{closeAction()}catch(x){}return true}
+function natNotify(title,body,tag){try{if(!document.hidden)return;var LN=Capacitor.Plugins.LocalNotifications;if(!LN)return;LN.schedule({notifications:[{id:Math.floor(Math.random()*1e9),title:title,body:body,channelId:"alerts",schedule:{at:new Date(Date.now()+800),allowWhileIdle:true}}]})}catch(e){}}
+/* ---- reminders that ring with the app closed ---- */
+function natHash(s){var h=7;s=String(s);for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return 100+Math.abs(h%2000000000)}
+function natAlarmSoon(){if(!natOn())return;clearTimeout(NAT.alT);NAT.alT=setTimeout(natAlarms,600)}
+function natAlarms(){var LN=natOn()&&Capacitor.Plugins.LocalNotifications;if(!LN)return;
+  var now=Date.now(),want=[];if(AU.me()&&get("musaed.natRem")!=="0")calGet().filter(function(x){return !x.done&&x.s>now-60000&&x.s<now+30*864e5}).sort(function(a,b){return a.s-b.s}).slice(0,60).forEach(function(x){
+    var rem=x.kind==="reminder",at=rem?x.s:x.s-10*60000;if(at<now+5000)return;var k=KIND[x.kind]||KIND.appointment;
+    want.push({id:natHash(x.id),title:rem?"تذكير: "+x.title:x.title,body:rem?"مساعد يذكّرك الحين":"بعد ١٠ دقائق · "+k[0]+(x.loc?" · "+x.loc:""),channelId:"alerts",schedule:{at:new Date(at),allowWhileIdle:true},extra:{ev:x.id}})});
+  Promise.resolve(LN.getPending()).then(function(p){var old=cArr(p&&p.notifications).filter(function(n){return n&&n.extra&&n.extra.ev}).map(function(n){return {id:n.id}});
+    return old.length?LN.cancel({notifications:old}):null}).catch(function(){}).then(function(){if(want.length)return LN.schedule({notifications:want})}).catch(function(){})}
+/* ---- settings: permissions and alerts ---- */
+function natPermRender(){var g=$("#permG");if(!g)return;natRun("state").then(function(st){NAT.perms=st||{};g.textContent="";NPERMS.forEach(function(p){var v=NAT.perms[p[0]]||"unknown",b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";
+    var a=document.createElement("span");a.textContent=p[1];var s=document.createElement("span");s.style.fontWeight="600";s.textContent=v==="granted"?"مسموح":v==="denied"?"مرفوض · افتح الإعدادات":v==="off"?"متوقف":"اضغط للسماح";s.style.color=v==="granted"?"#30D158":v==="denied"?"#FF6961":"#64D2FF";
+    b.appendChild(a);b.appendChild(s);b.onclick=function(){if(v==="granted"&&p[0]!=="notify")return toast(p[1]+": مسموح");natRun("ask",{name:p[0]}).then(function(r){if(r&&r.state==="settings")toast("فعّلها من الشاشة اللي انفتحت، وارجع للتطبيق");setTimeout(natPermRender,700)},function(){toast("تعذّر فتح الصلاحية")})};g.appendChild(b)});
+    var o=document.createElement("button");o.type="button";o.className="cell plain";o.textContent="فتح إعدادات التطبيق في أندرويد";o.onclick=function(){natRun("ask",{name:"app"})};g.appendChild(o)},function(){g.textContent="";var x=document.createElement("div");x.className="cell";x.textContent="تعذّر قراءة الصلاحيات";g.appendChild(x)})}
+var NALERTS=[["missed","مكالمة فائتة","native"],["bank","عملية شراء من رسالة البنك","native"],["auto","تسجيل مصاريف البنك تلقائياً","musaed.natAuto"],["rem","التذكيرات والمواعيد والتطبيق مقفل","musaed.natRem"],["notes","قراءة إشعارات التطبيقات الأخرى","native"]];
+function natAlertRender(){var g=$("#natG");if(!g)return;var pr=(NAT.info&&NAT.info.prefs)||{};g.textContent="";NALERTS.forEach(function(r){var on=r[2]==="native"?pr[r[0]]!==false:get(r[2])!=="0",b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";
+  var a=document.createElement("span");a.textContent=r[1];var s=document.createElement("span");s.style.fontWeight="600";s.textContent=on?"يعمل":"متوقف";s.style.color=on?"#30D158":"rgba(255,255,255,.55)";b.appendChild(a);b.appendChild(s);
+  b.onclick=function(){if(r[2]==="native"){var o={};o[r[0]]=!on;natRun("setPrefs",o).then(function(){pr[r[0]]=!on;if(NAT.info)NAT.info.prefs=pr;natAlertRender();toast(r[1]+": "+(!on?"يعمل":"متوقف"))},function(){toast("تعذّر الحفظ")})}
+    else{set(r[2],on?"0":"1");natAlertRender();if(r[0]==="rem")natAlarms();toast(r[1]+": "+(!on?"يعمل":"متوقف"))}};g.appendChild(b)})}
+function natDiag(){if(!natOn()||!NAT.info)return "";return "\nتطبيق أندرويد: "+NAT.info.version+" · "+(NAT.info.model||"")}
+function natInit(){if(!natOn())return;document.body.classList.add("native");
+  ["#natH","#natG","#natF"].forEach(function(s){var e=$(s);if(e)e.hidden=false});var f=$("#permF");if(f)f.textContent="إذا كانت الصلاحية مرفوضة، اضغط عليها وتنفتح لك إعدادات أندرويد. بيانات الهاتف (الرسائل والمكالمات والإشعارات) تبقى على جهازك.";
+  natRun("info").then(function(i){NAT.info=i||null;natAlertRender()},function(){});
+  try{var P=Capacitor.Plugins.Musaed;P.addListener("call",natCallEv);P.addListener("sms",natSmsEv)}catch(e){}
+  natAlarms();document.addEventListener("visibilitychange",function(){if(!document.hidden){natAlarmSoon();if(NAT.perms&&$("#card").classList.contains("open"))natPermRender()}})}
 /* permissions */
 var PERMS=[["microphone","الميكروفون","mic"],["geolocation","الموقع","loc"],["notifications","التنبيهات","ntf"]];
 function permState(n){return new Promise(function(res){if(n==="notifications"&&"Notification" in window)return res(Notification.permission==="default"?"prompt":Notification.permission);
@@ -2535,7 +2656,7 @@ function permState(n){return new Promise(function(res){if(n==="notifications"&&"
 function permAsk(n){if(n==="microphone"){try{navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){st.getTracks().forEach(function(t){t.stop()});permRender()},function(){toast("الميكروفون مرفوض. اسمح به من إعدادات المتصفح");permRender()})}catch(e){}}
   else if(n==="geolocation"){try{navigator.geolocation.getCurrentPosition(function(){permRender()},function(){toast("الموقع مرفوض. اسمح به من إعدادات المتصفح");permRender()})}catch(e){}}
   else{try{Notification.requestPermission().then(permRender)}catch(e){}}}
-function permRender(){var g=$("#permG");if(!g)return;g.textContent="";PERMS.forEach(function(p){var b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";var a=document.createElement("span");a.textContent=p[1];var st=document.createElement("span");st.style.fontWeight="600";st.textContent="…";b.appendChild(a);b.appendChild(st);g.appendChild(b);
+function permRender(){if(natOn())return natPermRender();var g=$("#permG");if(!g)return;g.textContent="";PERMS.forEach(function(p){var b=document.createElement("button");b.type="button";b.className="cell plain";b.style.justifyContent="space-between";var a=document.createElement("span");a.textContent=p[1];var st=document.createElement("span");st.style.fontWeight="600";st.textContent="…";b.appendChild(a);b.appendChild(st);g.appendChild(b);
   permState(p[0]).then(function(v){st.textContent=v==="granted"?"مسموح":v==="denied"?"مرفوض":v==="prompt"?"اضغط للسماح":"غير متاح";st.style.color=v==="granted"?"#30D158":v==="denied"?"#FF6961":"#64D2FF";b.onclick=function(){if(v==="granted")toast(p[1]+": مسموح");else permAsk(p[0])}})})}
 var LOCK_AFTER=5*60000,lockHidAt=0;
 function lockOn(){var u=AU.me();return !!(u&&u.pin&&u.pin.hash)}
@@ -2559,9 +2680,10 @@ $("#auEye").onclick=function(){var i=$("#auPass"),sh=i.type==="password";i.type=
 $("#acOut").onclick=authOut;$("#acPass").onclick=authPass;$("#acDel").onclick=authDel;$("#acRc").onclick=authRc;$("#acLock").onclick=authLock;
 if(!AU.me()){authShow()}else{acRender();if(lockOn())lockShow();else if(!(AU.me().rc&&AU.me().rc.hash)&&!sessionStorage.getItem("musaed.rcAsk")){try{sessionStorage.setItem("musaed.rcAsk","1")}catch(e){}setTimeout(function(){showAction({type:"card",key:"rcask",icon:"lock",tone:"ask",tagTone:"ask",title:"أنشئ رمز الاسترجاع",tag:"بدونه ما تقدر ترجع حسابك إذا نسيت كلمة المرور",keep:true,go:"#",goText:"أنشئه الآن",fn:function(){authRc()}})},1500)}}
 
-swInit();if(AU.me())qsBoot();lrStart();document.body.classList.toggle("driving",drvOn());document.body.classList.toggle("big",get("musaed.big")==="1");livePill();setTimeout(momTick,6000);setInterval(momTick,60000);
+swInit();natInit();if(AU.me())qsBoot();lrStart();document.body.classList.toggle("driving",drvOn());document.body.classList.toggle("big",get("musaed.big")==="1");livePill();setTimeout(momTick,6000);setInterval(momTick,60000);
 document.addEventListener("visibilitychange",function(){if(!document.hidden){lrStart();momTick()}});
 window.__mz2=function(){return {MT:!!MT,lrWatch:lrWatch!=null,drv:drvOn(),qm:qmWeek()}};
+window.__nt={tool:function(n,a){return new Promise(function(r){TOOLS[n](a||{},r)})},setup:function(){return setupMsg().setup},on:function(){return natOn()},act:function(a){showAction(a)}};
 window.__t={openCard:function(w){openCard(w)},closeCard:function(){closeCard()},momTick:function(){momTick()}};
 $("#locBtn").onclick=function(){$("#locState").textContent="جارٍ التحديد…";getLoc(null,true)};showLoc();
 $("#clearBtn").onclick=function(){log=[];set(K.log,"[]");renderLog()};
